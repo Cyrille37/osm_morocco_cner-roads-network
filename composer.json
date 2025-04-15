@@ -1,0 +1,21 @@
+{
+    "name": "cyrille/rr_inspect",
+    "description": "inspect marocco ways network",
+    "type": "project",
+    "require": {
+        "gasparesganga/php-shapefile": "^3.4",
+        "jmikola/geojson": "^1.2"
+    },
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Cyrille\\RrInspect\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Cyrille Giquello",
+            "email": "cyrille@giquello.fr"
+        }
+    ]
+}

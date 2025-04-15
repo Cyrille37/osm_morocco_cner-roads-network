@@ -1,0 +1,5 @@
+
+# copy "config-example.inc.php" to "config.inc.php"
+config.inc.php
+
+/vendor
