@@ -1,7 +1,9 @@
 
-Pour faire le suivi de la mise à jour du réseau routier Marocain.
+Pour faire le suivi de la mise à jour du réseau routier Marocain à partir du ShapeFile fourni par le CNER début 2025.
+Les données sont sur la page https://map.comptoir.net/maroc-reseau-routier-2025-01/.
 
-- https://map.comptoir.net/maroc-reseau-routier-2025-01/
+Annonce et discussions :
+
 - https://wiki.openstreetmap.org/wiki/FR_talk:Maroc#R%C3%A9seau_routier_mise_%C3%A0_jour_2025-01
 - https://community.openstreetmap.org/t/morocco-maroc-reseau-routier-mise-a-jour-2025-01/128074/
 - https://forum.openstreetmap.fr/t/maroc-reseau-routier-mise-a-jour-2025-01/32655
