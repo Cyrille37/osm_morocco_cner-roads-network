@@ -67,10 +67,12 @@ include(__DIR__ . '/config.inc.php');
 readOptions();
 
 // To save $stats in a file.
-$resultFile = $config['cacheFolder'] . '/analyze.json';
+$resultFile = $config['analyze_results']['file'] ;
+$resultFreq = $config['analyze_results']['save_freq']??0 ;
 
 $stats = [
     'start_at' => time(),
+    'end_at' => null,
     'processed_count' => 0,
     'download_count' => 0,
     'download_bytes' => 0,
@@ -82,6 +84,10 @@ $stats = [
     'axes' => [],
     'config' => $config,
 ];
+
+$axesErrorsKeys=[];
+foreach( $config['errors']['keys'] as $k )
+    $axesErrorsKeys[$k] = [];
 
 $common = new Common($config, $stats);
 
@@ -124,27 +130,24 @@ while ($row = fgetcsv($axesFile)) {
             'unknow' => $row[$config['axes_csv']['columns']['etatUnknow']],
         ],
         'download' => null,
-        'errors' => [
-            'mismatch_ref' => [],
-            'missing_relation' => [],
-            'too_many_relations' => [],
-            'missing_continuity' => [],
-            'missing_surface' => [],
-            'ways_not_in_relation' => [],
-            'match_rr_cner' => []
-        ],
+        'errors' => [],
     ];
 
     process_ref($row);
 
-    $stats['processed_count']++;
+    $stats['processed_count']++ ;
 
     // Periodically save $stats in a file.
-    if ($stats['processed_count'] % 2 == 0)
-        file_put_contents($resultFile, json_encode($stats));
+    if( $resultFreq > 0 )
+    {
+        if ($stats['processed_count'] % $resultFreq == 0)
+            file_put_contents($resultFile, json_encode($stats));
+    }
 }
 
 fclose($axesFile);
+
+$stats['end_at'] = time();
 
 // Save $stats in a file.
 file_put_contents($resultFile, json_encode($stats));
@@ -156,8 +159,9 @@ echo 'Stats: ', print_r($stats, true), "\n";
 if ($stats['processed_count'] == 0)
     echo Ansi::BACKGROUND_BLACK, Ansi::YELLOW, 'Nothing processed, check "--process_only" and/or "config.process_only".', Ansi::CLOSE, Ansi::EOL;
 
-// ===== end
-
+//
+// ===== end =====
+//
 
 /**
  * Read command line options and override config.
@@ -211,6 +215,9 @@ function add_error($ref, $type, $err)
 {
     global $config, $stats, $common;
 
+    if( ! in_array($type, $config['errors']['keys'] ) )
+        throw new \InvalidArgumentException('Unknow error type, sync your code by adding "'.$type.'" in config.errors.keys array');
+
     $skip = false;
     if (isset($config['errors']['ignore_types'][$type])) {
         $rule = $config['errors']['ignore_types'][$type];
@@ -226,7 +233,10 @@ function add_error($ref, $type, $err)
 
     $stats['errors_effective_count']++;
 
+    if( ! isset($stats['axes'][$ref]['errors'][$type]) )
+        $stats['axes'][$ref]['errors'][$type] = [];
     $stats['axes'][$ref]['errors'][$type][] = $err;
+
     if ($config['debug'])
         echo Ansi::YELLOW, $ref, ' ', $type, ' ', $err, Ansi::CLOSE, Ansi::EOL;
 
@@ -393,9 +403,6 @@ function compare_with_rr_cner($ref, $xmlWays)
 
     // Check RR points are in OSM rectangles
 
-    //$json = json_decode(file_get_contents(rr_filename($ref)));
-    /** @var \GeoJson\Feature\FeatureCollection $featureCollection */
-    //$featureCollection = GeoJson::jsonUnserialize($json);
     $featureCollection = getRrGeojson($ref);
 
     $cnerMatchWays = true;

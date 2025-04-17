@@ -33,10 +33,35 @@ class Common
         return $rr_file;
     }
 
+    public static function get_overpass_query(string $ref): string
+    {
+        // must use "out meta" to permits opening in Josm.
+        $query = '
+            [out:xml] [timeout:30];
+            // Maroc "wikidata"="Q1028"
+            area[admin_level=2]["wikidata"="Q1028"]->.country;
+            (
+                rel[ref~"(^|;)(R)?' . $ref . '($|;)"](area.country);
+                >>;
+                way[ref~"(^|;)(R)?' . $ref . '($|;)"](area.country);
+                >;
+            );
+            out meta;
+        ';
+        return $query;
+    }
 
     function &download_osm($ref, $force = false)
     {
-        //global $config, $stats;
+        $output_file = $this->osm_filename($ref);
+
+        if (! $force && isset($this->config['overpass']['expire_after_seconds'])) {
+            if (
+                file_exists($output_file)
+                && (filemtime($output_file) + $this->config['overpass']['expire_after_seconds']) < time()
+            )
+                $force = true;
+        }
 
         $result = [
             'force' => $force,
@@ -44,8 +69,6 @@ class Common
             'bytes' => -1,
             'instance' => null,
         ];
-
-        $output_file = $this->osm_filename($ref);
 
         if (! $force) {
             if (file_exists($output_file)) {
@@ -68,18 +91,7 @@ class Common
         $this->stats['download_count']++;
 
         // must use "out meta" to permits opening in Josm.
-        $query = '
-    [out:xml] [timeout:30];
-    // Maroc "wikidata"="Q1028"
-    area[admin_level=2]["wikidata"="Q1028"]->.country;
-    (
-        rel[ref~"(^|;)(R)?' . $ref . '($|;)"](area.country);
-        >>;
-        way[ref~"(^|;)(R)?' . $ref . '($|;)"](area.country);
-        >;
-    );
-    out meta;
-    ';
+        $query = self::get_overpass_query($ref);
 
         $context = stream_context_create([
             'http' => [
@@ -102,7 +114,7 @@ class Common
         }
 
         // Retourne le nombres d'octets plutôt que le nombre de caractères dans une chaîne. 
-        $bytes = strlen($json) ;
+        $bytes = strlen($json);
         $this->stats['download_bytes'] += $bytes;
         $result['bytes'] = $bytes;
 

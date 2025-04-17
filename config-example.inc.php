@@ -30,8 +30,15 @@ $config = [
         ]
     ],
 
+    'analyze_results' => [
+        'file' => './analyze.json',
+        'save_freq' => 0 ,
+    ],
+
     'overpass' => [
         'sleep' => 20,
+        // To automatically force download if cache file is older than
+        //'expire_after_seconds' => 60 * 60 * 24,
         'instances' => [
             'https://overpass.private.coffee/api/interpreter',    
             'https://overpass-api.de/api/interpreter',
@@ -48,6 +55,16 @@ $config = [
     ],
 
     'errors' => [
+        'keys' => [
+            // Les erreurs utilisées par osm_check
+            'mismatch_ref',
+            'missing_relation',
+            'too_many_relations',
+            'missing_continuity',
+            'missing_surface',
+            'ways_not_in_relation',
+            'match_rr_cner'
+        ],
         'ignore_types' => [
             'missing_surface' => true,
             'match_rr_cner' => [

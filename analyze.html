@@ -1,0 +1,230 @@
+<!doctype html>
+<html>
+
+<head>
+  <meta charSet="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Morocco roads network analyze results</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-SgOJa3DmI69IUzQ2PVdRZhwQ+dy64/BUtbMJw1MZ8t5HZApcHrRKUc4W0kG879m7" crossorigin="anonymous" />
+  <link href="https://cdn.datatables.net/2.2.2/css/dataTables.dataTables.min.css" rel="stylesheet" />
+  <style>
+    .result-global {
+      padding: .75em;
+    }
+  </style>
+</head>
+
+<body>
+  <section class="container-fluid">
+
+    <h1>Morocco roads network analyze results</h1>
+
+    <div id="results-global">
+      <template id="result-global-template">
+        <span class="result-global">
+          <span class="badge rounded-pill text-bg-secondary position-relative">
+            <span class="label">label</span>
+            <span class="value position-absolute top-0 start-100 translate-middle badge rounded-pill text-bg-success">
+              value
+            </span>
+          </span>
+        </span>
+      </template>
+    </div>
+
+    <div id="overpass-instances">
+      <p>Overpass instances:</p>
+      <ul>
+        <li>overpass instance url</li>
+      </ul>
+    </div>
+
+    <table id="results-table">
+      <thead>
+        <tr>
+          <th zdata-data="ref" zdata-name="ref"></th>
+        </tr>
+      </thead>
+    </table>
+
+  </section>
+
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"
+    integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+  <script src="https://cdn.datatables.net/2.2.2/js/dataTables.min.js"></script>
+  <script>
+
+    let table = null;
+
+    $.getJSON('../cache/analyze.json', function (data) {
+
+      let value;
+      let $bloc = $('#results-global');
+      const $rgTemplate = $('#result-global-template');
+
+      // Global
+
+      ['processed_count', 'ways_count', 'relations_count', 'errors_effective_count', 'errors_ignored_count', 'download_count', 'download_bytes']
+        .forEach((key, idx) => {
+          const $t = $rgTemplate.clone().contents();
+          switch (key) {
+            //case 'download_bytes': value = (value / 1024 ) + ' Mo' ; break;
+            case 'download_bytes': value = bytesForHuman(data[key]); break;
+            default:
+              value = data[key];
+          }
+          $('.label', $t).html(key);
+          $('.value', $t).html(value);
+          $t.appendTo($bloc);
+        });
+
+      $bloc = $('#overpass-instances ul');
+      $bloc.empty();
+      data['config']['overpass']['instances'].forEach((url, idx) => {
+        $('<li>' + url + '</li>').appendTo($bloc);
+      });
+
+      // Axes table
+      const columns = [];
+      columns.push({
+        data: 'ref', title: 'Axe', render: (data, type, row, meta) => {
+          return data
+            + ' <a href="' + get_josm_link(data) + '" onclick="josmEdit(this,event)">josm</a>'
+            + ' <a href="' + get_overpassturbo_link(data) + '" target="_blank">overpass</a>'
+            ;
+        }
+      });
+      columns.push({
+        title: 'check time',
+        data: 'start_at', render: {
+          _: 'd',
+          sort: 't'
+        }
+      });
+      data['config']['errors']['keys'].forEach((k, idx) => {
+        columns.push({ data: k, 'title': k });
+      });
+      table = new DataTable('#results-table', {
+        'searching': true,
+        'ordering': true,
+        'pageLength': 50,
+        columns: columns,
+
+      });
+
+      // Add rows
+
+      const errors_ignored = data['config']['errors']['ignore_types'];
+
+      Object.keys(data['axes']).forEach((ref, idx) => {
+
+        let axe = data['axes'][ref];
+
+        let row = {
+          'ref': ref,
+          'start_at': {
+            d: new Date(axe['start_at'] * 1000).toLocaleString(),
+            t: axe['start_at'],
+          }
+        };
+        data['config']['errors']['keys'].forEach((k, idx) => {
+          row[k] = '';
+          let ignored = false;
+          if (errors_ignored[k]) {
+            //if( ref=='R320')
+            //  console.debug(k, typeof errors_ignored[k], errors_ignored[k]);
+
+            switch (typeof errors_ignored[k]) {
+              case 'boolean':
+                if (errors_ignored[k] == true)
+                  ignored = true;
+                break;
+              case 'object': // Must be an Array
+                if (errors_ignored[k].includes(ref))
+                  ignored = true;
+                break;
+              default:
+                console.error('Unknow case:', k, typeof errors_ignored[k], errors_ignored[k]);
+            }
+          }
+          if (ignored)
+            row[k] = 'ignored';
+          else if (axe['errors'][k])
+            row[k] = axe['errors'][k].length;
+
+        });
+
+        table.row.add(row);
+
+      });
+      table.draw();
+
+    });
+
+    function bytesForHuman(n) {
+      if (n < 1000)
+        return new Intl.NumberFormat().format(n) + ' B';
+      if (n < (1000 * 1000))
+        return new Intl.NumberFormat().format(n / 1000) + ' Ko';
+      if (n < (1000 * 1000 * 1000))
+        return new Intl.NumberFormat().format(n / (1000 * 1000)) + ' Mo';
+      if (n < (1000 * 1000 * 1000 * 1000))
+        return new Intl.NumberFormat().format(n / (1000 * 1000 * 1000)) + ' Go';
+      return n;
+    }
+
+    function get_overpass_query(ref) {
+      let q = `[out:xml] [timeout:30];
+            area[admin_level=2]["wikidata"="Q1028"]->.country;
+            (
+                rel[ref~"(^|;)(R)?${ref}($|;)"](area.country);
+                >>;
+                way[ref~"(^|;)(R)?${ref}($|;)"](area.country);
+                >;
+            );
+            out meta;
+        `;
+        //q = q.replace(/\s+/gm, ' ');
+        q = q.replace(/[ ]+/gm, ' ');
+        return q;
+    }
+
+    function get_overpass_link(ref) {
+      return 'https://overpass-api.de/api/interpreter?data=' + encodeURI(get_overpass_query(ref));
+    }
+
+    function get_overpassturbo_link(ref) {
+      return 'https://overpass-turbo.eu/?Q=' + encodeURI(get_overpass_query(ref));
+    }
+
+    function get_josm_link(ref) {
+      const link = 'http://127.0.0.1:8111/import?url=http://overpass-api.de/api/interpreter?data=' + encodeURI(get_overpass_query(ref));
+      return link;
+    }
+    function josmEdit(sender, e) {
+
+      e.preventDefault();
+      const url = $(e.currentTarget).attr('href');
+
+      const iframe = $('<iframe>');
+      const timeoutId = setTimeout(function () {
+        alert('Cannot open data in Josm. Check that Josm is running with remote control enabled.');
+        iframe.remove();
+      }, 3000);
+
+      iframe
+        .hide()
+        .appendTo('body')
+        .attr('src', url)
+        .on('load', function () {
+          clearTimeout(timeoutId);
+          iframe.remove();
+        });
+    }
+
+  </script>
+</body>
+
+</html>
