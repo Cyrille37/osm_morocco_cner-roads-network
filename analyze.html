@@ -87,6 +87,7 @@
       });
 
       // Axes table
+
       const columns = [];
       columns.push({
         data: 'ref', title: 'Axe', render: (data, type, row, meta) => {
@@ -103,34 +104,50 @@
           sort: 't'
         }
       });
+      columns.push({
+        title: 'has errors',
+        data: 'has_errors'
+      });
       data['config']['errors']['keys'].forEach((k, idx) => {
         columns.push({ data: k, 'title': k });
       });
       table = new DataTable('#results-table', {
         'searching': true,
         'ordering': true,
-        'pageLength': 50,
+        'pageLength': 150,
+        'lengthMenu': [50, 150, 500, { label: 'All', value: -1 }],
         columns: columns,
 
       });
 
       // Add rows
 
-      const errors_ignored = data['config']['errors']['ignore_types'];
-
       Object.keys(data['axes']).forEach((ref, idx) => {
 
         let axe = data['axes'][ref];
 
         let row = {
-          'ref': ref,
+          'ref': '<span class="fw-bold">' + ref + '</span>',
           'start_at': {
             d: new Date(axe['start_at'] * 1000).toLocaleString(),
             t: axe['start_at'],
           }
         };
+        let has_errors = 0;
         data['config']['errors']['keys'].forEach((k, idx) => {
+
           row[k] = '';
+          if (axe['errors_ignored_count'][k]) {
+            row[k] = '<span class="text-warning-emphasis">ignored: ' + axe['errors_ignored_count'][k] + '</span>';
+            has_errors = axe['errors_ignored_count'][k];
+          }
+          else if (axe['errors'][k]) {
+            row[k] = '<span class="text-danger">errors: ' + axe['errors'][k].length + '</span>';
+            has_errors = axe['errors'][k].length;
+          }
+
+        /*
+        const errors_ignored = data['config']['errors']['ignore_types'];
           let ignored = false;
           if (errors_ignored[k]) {
             //if( ref=='R320')
@@ -153,12 +170,16 @@
             row[k] = 'ignored';
           else if (axe['errors'][k])
             row[k] = axe['errors'][k].length;
+          */
 
         });
+
+        row['has_errors'] = has_errors ;
 
         table.row.add(row);
 
       });
+
       table.draw();
 
     });
@@ -186,9 +207,9 @@
             );
             out meta;
         `;
-        //q = q.replace(/\s+/gm, ' ');
-        q = q.replace(/[ ]+/gm, ' ');
-        return q;
+      //q = q.replace(/\s+/gm, ' ');
+      q = q.replace(/[ ]+/gm, ' ');
+      return q;
     }
 
     function get_overpass_link(ref) {

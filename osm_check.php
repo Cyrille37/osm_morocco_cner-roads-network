@@ -130,6 +130,7 @@ while ($row = fgetcsv($axesFile)) {
             'unknow' => $row[$config['axes_csv']['columns']['etatUnknow']],
         ],
         'download' => null,
+        'errors_ignored_count' => [],
         'errors' => [],
     ];
 
@@ -226,8 +227,18 @@ function add_error($ref, $type, $err)
         else if (in_array($ref, $rule))
             $skip = true;
     }
+
     if ($skip) {
         $stats['errors_ignored_count']++;
+
+        if( ! isset($stats['axes'][$ref]['errors_ignored_count'][$type]) )
+        {
+            $stats['axes'][$ref]['errors_ignored_count'][$type] = 1 ;
+        }
+        else
+        {
+            $stats['axes'][$ref]['errors_ignored_count'][$type] ++ ;
+        }
         return;
     }
 
