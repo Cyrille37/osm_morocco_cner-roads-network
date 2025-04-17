@@ -89,13 +89,30 @@ $axesFile = fopen($config['axes_csv']['file'], 'r');
 $headers = $row = fgetcsv($axesFile);
 while ($row = fgetcsv($axesFile)) {
 
-    $ref = $row[0];
-    if (
-        isset($config['process_only']) && (count($config['process_only']) > 0)
-        && (!in_array($ref, $config['process_only']))
-    ) {
-        continue;
+    $ref = $row[$config['axes_csv']['columns']['axe']];
+
+    if( empty($ref) || ! preg_match('#^[NRP]\d+$#', $ref) )
+    {
+        echo 'Invalid ref:['.$ref.'], check column "axe"',"\n";
+        exit();
     }
+
+    /*
+    Process row if:
+        - column "done" != -1 or != ''
+        - or in process_only
+    */
+    $stateDone = $row[$config['axes_csv']['columns']['done']];
+    if( $stateDone == '' || $stateDone == '-1')
+    {
+        if (
+            ! isset($config['process_only']) || (count($config['process_only']) == 0)
+            || (! in_array($ref, $config['process_only']))
+        ) {
+            continue;
+        }
+    }
+
     echo Ansi::BOLD, 'Processing ', $ref, Ansi::CLOSE, Ansi::EOL;
 
     $stats['axes'][$ref] = [
@@ -145,6 +162,7 @@ if ($stats['processed_count'] == 0)
 
 /**
  * Read command line options and override config.
+ * 
  * @return void 
  */
 function readOptions()
@@ -224,7 +242,8 @@ function add_error($ref, $type, $err)
 function process_ref(&$row)
 {
     global $config, $stats, $common;
-    $ref = $row[0];
+
+    $ref = $row[$config['axes_csv']['columns']['axe']];
 
     $result = $common->download_osm($ref, $config['download_force']);
     $stats['axes'][$ref]['download'] = $result;
