@@ -74,7 +74,6 @@ class GeometryTools
         if ($maxDistance > $epsilon) {
             $recResults1 = self::douglasPeucker(array_slice($points, 0, $index + 1), $epsilon);
             $recResults2 = self::douglasPeucker(array_slice($points, $index), $epsilon);
-
             // merge results without duplicate
             return array_merge(array_slice($recResults1, 0, -1), $recResults2);
         } else {
@@ -82,11 +81,10 @@ class GeometryTools
         }
     }
 
-
     public static function isPointInPolygon($point, $polygon)
     {
         /*$x = $point['lon'];
-    $y = $point['lat'];*/
+        $y = $point['lat'];*/
         $x = $point[0];
         $y = $point[1];
 
@@ -99,12 +97,10 @@ class GeometryTools
             $xj = $polygon[$j][0];
             $yj = $polygon[$j][1];
 
-            $intersect = (($yi > $y) != ($yj > $y)) &&
-                ($x < ($xj - $xi) * ($y - $yi) / ($yj - $yi + 1e-10) + $xi);
+            $intersect = (($yi > $y) != ($yj > $y))
+                && ($x < ($xj - $xi) * ($y - $yi) / ($yj - $yi + 1e-10) + $xi);
             if ($intersect) {
                 $inside = !$inside;
-                //$inside = true ;
-                //break;
             }
         }
 
@@ -150,7 +146,7 @@ class GeometryTools
         // 3. Cap perpendiculaire
         $perp1 = $bearing + 90;
         $perp2 = $bearing - 90;
-        $halfWidth = $widthOffsetMeters ;
+        $halfWidth = $widthOffsetMeters;
         // 4. Créer les 4 coins du polygone
         $A1 = self::offsetPoint($extendedA[1], $extendedA[0], $halfWidth, $perp1);
         $A2 = self::offsetPoint($extendedA[1], $extendedA[0], $halfWidth, $perp2);
