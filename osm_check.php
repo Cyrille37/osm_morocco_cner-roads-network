@@ -91,24 +91,23 @@ while ($row = fgetcsv($axesFile)) {
 
     $ref = $row[$config['axes_csv']['columns']['axe']];
 
-    if( empty($ref) || ! preg_match('#^[NRP]\d+$#', $ref) )
-    {
-        echo 'Invalid ref:['.$ref.'], check column "axe"',"\n";
+    if (empty($ref) || ! preg_match('#^[NRP]\d+$#', $ref)) {
+        echo 'Invalid ref:[' . $ref . '], check column "axe"', "\n";
         exit();
     }
 
     /*
     Process row if:
-        - column "done" != -1 or != ''
-        - or in process_only
+        - in process_only
+        - or column "done" != -1 or != ''
     */
-    $stateDone = $row[$config['axes_csv']['columns']['done']];
-    if( $stateDone == '' || $stateDone == '-1')
-    {
-        if (
-            ! isset($config['process_only']) || (count($config['process_only']) == 0)
-            || (! in_array($ref, $config['process_only']))
-        ) {
+
+    if (isset($config['process_only']) && (count($config['process_only']) > 0)) {
+        if (! in_array($ref, $config['process_only']))
+            continue;
+    } else {
+        $stateDone = $row[$config['axes_csv']['columns']['done']];
+        if ($stateDone == '' || $stateDone == '-1') {
             continue;
         }
     }
