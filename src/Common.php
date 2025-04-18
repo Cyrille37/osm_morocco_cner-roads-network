@@ -104,13 +104,22 @@ class Common
             ],
         ]);
 
-        $json = @file_get_contents($url, false, $context);
-        if ($json === false) {
-            var_dump($http_response_header);
-            $e = error_get_last();
-            $error = (isset($e) && isset($e['message']) && $e['message'] != "") ?
-                $e['message'] : "Check that the file exists and can be read.";
-            throw new \Exception('Failed to get "' . $url . '" error: ' . $error);
+
+        $retry_max = 3;
+        for ($retry = 1; $retry <= $retry_max; $retry++) {
+            try {
+                $json = @file_get_contents($url, false, $context);
+                if ($json === false) {
+                    throw new DownloadException($url, error_get_last(), $http_response_header);
+                }
+            } catch (DownloadException $ex) {
+                echo Ansi::TAB, Ansi::BACKGROUND_RED, Ansi::WHITE, 'Download failed: (', $ex->getCode(),') ', $ex->getMessage(), Ansi::CLOSE, "\n";
+                if ($retry == $retry_max) {
+                    die('Too many retries, exiting' . "\n");
+                }
+                echo Ansi::TAB,  'Retrying ', $retry, '/', $retry_max, ' ...', "\n";
+                sleep(5);
+            }
         }
 
         // Retourne le nombres d'octets plutôt que le nombre de caractères dans une chaîne. 
