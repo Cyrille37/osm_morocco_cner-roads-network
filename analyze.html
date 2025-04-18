@@ -269,11 +269,10 @@
                 break;
               case 'ways_not_in_relation':
                 row[k] = '<span class="text-danger">errors: ' + axe['errors'][k].length + '</span>';
-                if( axe['errors'][k].length <= 10 )
-                {
-                  row[k] += axe['errors'][k].reduce( (ac,value) => {
-                    ac += '<br/>' + value.replace('way: ','');
-                    return ac ;
+                if (axe['errors'][k].length <= 10) {
+                  row[k] += axe['errors'][k].reduce((ac, value) => {
+                    ac += '<br/>' + value.replace('way: ', '');
+                    return ac;
                   }, '');
                 }
                 break;
@@ -345,7 +344,7 @@
         + '?new_layer=true'
         // cannot select object in a locked layer
         //+ '&layer_locked=' +(locked?'true':'false')
-        + '&upload_policy=' +(locked?'false':'true')
+        + '&upload_policy=' + (locked ? 'false' : 'true')
         + '&url=' + importUrl
         ;
       return link;
