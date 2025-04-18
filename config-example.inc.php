@@ -4,7 +4,7 @@ $config = [
     'debug' => true,
 
     //'cacheFolder' => __DIR__ . '/cache',
-    'cacheFolder' => './cache',
+    'cacheFolder' => 'cache',
 
     // Don't cache osm download. Default to false.
     'download_force' => false ,
@@ -15,11 +15,13 @@ $config = [
     // cache computed rects. Defaut to false.
     'cacheRects' => false,
 
+    'historyFile' =>  'cache/history.json',
+
     //'splitsFolder' => __DIR__ . '/output',
-    'splitsFolder' => './split',
+    'splitsFolder' => 'split',
 
     'axes_csv' => [
-        'file' => './split/axes.csv',
+        'file' => 'split/axes.csv',
         'columns' => [
             'axe' => 0,
             'axe_old' => 1,

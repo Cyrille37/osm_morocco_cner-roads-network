@@ -56,6 +56,7 @@ require('vendor/autoload.php');
 use Cyrille\RrInspect\Ansi;
 use Cyrille\RrInspect\Common;
 use Cyrille\RrInspect\GeometryTools;
+use Cyrille\RrInspect\HistoryFile;
 use GeoJson\Exception\UnserializationException;
 use GeoJson\GeoJson;
 use GeoJson\Feature\Feature;
@@ -85,11 +86,19 @@ $stats = [
     'config' => $config,
 ];
 
-$axesErrorsKeys=[];
-foreach( $config['errors']['keys'] as $k )
-    $axesErrorsKeys[$k] = [];
-
 $common = new Common($config, $stats);
+
+$historyFile = new HistoryFile( $config['historyFile']);
+
+pcntl_async_signals(TRUE);
+pcntl_signal(SIGINT,'pcntl_signal_handler');
+function pcntl_signal_handler(int $signo, mixed $siginfo):void
+{
+    global $historyFile;
+    echo 'Saving HistoryFile',"\n";
+    $historyFile->save();
+    die();
+}
 
 $axesFile = fopen($config['axes_csv']['file'], 'r');
 $headers = $row = fgetcsv($axesFile);
@@ -136,15 +145,22 @@ while ($row = fgetcsv($axesFile)) {
 
     process_ref($row);
 
+    $historyFile->update($ref, count( $stats['axes'][$ref]['errors'] )> 0 ? true : false );
+
     $stats['processed_count']++ ;
 
     // Periodically save $stats in a file.
     if( $resultFreq > 0 )
     {
         if ($stats['processed_count'] % $resultFreq == 0)
+        {
             file_put_contents($resultFile, json_encode($stats));
+            $historyFile->save();
+        }
     }
 }
+
+$historyFile->save();
 
 fclose($axesFile);
 
@@ -375,8 +391,7 @@ function compare_with_rr_cner($ref, $xmlWays)
     $length = $config['geometry']['bouding-box']['padding-x'];
     $width = $config['geometry']['bouding-box']['padding-y'];
 
-    /* Debug features in file */
-    $features = [];
+    $cacheRectsFeatures = [];
 
     // Make rectangles from OSM data
 
@@ -400,15 +415,14 @@ function compare_with_rr_cner($ref, $xmlWays)
             $rectangles_osm[] = $rect;
 
             if ($cacheRects) {
-                /* Debug features in file */
-                $features[] = new Feature(new LineString($rect), []);
+                $cacheRectsFeatures[] = new Feature(new LineString($rect), []);
             }
         }
     }
 
     if ($cacheRects) {
         /* cache osm rectangles in file */
-        $featureCollection = new FeatureCollection($features);
+        $featureCollection = new FeatureCollection($cacheRectsFeatures);
         file_put_contents($config['cacheFolder'] . '/' . $ref . '_rects_osm.geojson', json_encode($featureCollection->jsonSerialize()));
     }
 
@@ -419,7 +433,7 @@ function compare_with_rr_cner($ref, $xmlWays)
     $cnerMatchWays = true;
 
     $rectangles_rr_cner = [];
-    $features = [];
+    $cacheRectsFeatures = [];
 
     foreach ($featureCollection as $feature) {
         $coords = $feature->getGeometry()->getCoordinates();
@@ -434,8 +448,7 @@ function compare_with_rr_cner($ref, $xmlWays)
                 $rectangles_rr_cner[] = $rect;
 
                 if ($cacheRects) {
-                    /* Debug features in file */
-                    $features[] = new Feature(new LineString($rect), []);
+                    $cacheRectsFeatures[] = new Feature(new LineString($rect), []);
                 }
             }
 
@@ -455,7 +468,7 @@ function compare_with_rr_cner($ref, $xmlWays)
 
     if ($cacheRects) {
         /* cache cner rectangles in file */
-        $featureCollection = new FeatureCollection($features);
+        $featureCollection = new FeatureCollection($cacheRectsFeatures);
         file_put_contents($config['cacheFolder'] . '/' . $ref . '_rects_cner.geojson', json_encode($featureCollection->jsonSerialize()));
     }
 
