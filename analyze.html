@@ -9,9 +9,55 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/css/bootstrap.min.css" rel="stylesheet"
     integrity="sha384-SgOJa3DmI69IUzQ2PVdRZhwQ+dy64/BUtbMJw1MZ8t5HZApcHrRKUc4W0kG879m7" crossorigin="anonymous" />
   <link href="https://cdn.datatables.net/2.2.2/css/dataTables.dataTables.min.css" rel="stylesheet" />
+
   <style>
+    div.dt-container .dt-paging .dt-paging-button {
+      padding: 0;
+    }
+
+    #results-global {
+      margin-bottom: 1em;
+    }
+
     .result-global {
       padding: .75em;
+    }
+
+    .collapsible {
+      background-color: #777;
+      color: white;
+      cursor: pointer;
+      padding: .5em;
+      width: 100%;
+      border: none;
+      text-align: left;
+      outline: none;
+      font-size: 15px;
+    }
+
+    .collapsible.active,
+    .collapsible:hover {
+      background-color: #555;
+    }
+
+    .collapsible:before {
+      content: '\002B';
+      color: white;
+      font-weight: bold;
+      /*float: left;*/
+      margin-right: 5px;
+    }
+
+    .collapsible.active:before {
+      content: "\2212";
+    }
+
+    .content {
+      padding: 0 18px;
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.2s ease-out;
+      background-color: #f1f1f1;
     }
   </style>
 </head>
@@ -19,7 +65,9 @@
 <body>
   <section class="container-fluid">
 
-    <h1>Morocco roads network analyze results</h1>
+    <div>
+      <h1>Morocco roads network analyze results</h1>
+    </div>
 
     <div id="results-global">
       <template id="result-global-template">
@@ -34,104 +82,160 @@
       </template>
     </div>
 
-    <div id="overpass-instances">
-      <p>Overpass instances:</p>
-      <ul>
-        <li>overpass instance url</li>
-      </ul>
+    <div>
+      <button class="collapsible">Configuration</button>
+      <div class="content">
+        <div id="overpass-instances">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th>Overpass instances:</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div id="ignored-errors">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th>ignored error</th>
+                <th>rule</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
-    <table id="results-table">
-      <thead>
-        <tr>
-          <th zdata-data="ref" zdata-name="ref"></th>
-        </tr>
-      </thead>
-    </table>
+    <div>
+      <table id="results-table">
+        <thead>
+          <tr>
+            <th zdata-data="ref" zdata-name="ref"></th>
+          </tr>
+        </thead>
+      </table>
+    </div>
 
   </section>
 
   <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"
     integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
   <script src="https://cdn.datatables.net/2.2.2/js/dataTables.min.js"></script>
+
   <script>
 
     let table = null;
 
-    $.getJSON('../cache/analyze.json', function (data) {
+    loadResults();
+    initCollapsibles();
 
-      let value;
-      let $bloc = $('#results-global');
-      const $rgTemplate = $('#result-global-template');
+    function loadResults() {
 
-      // Global
+      $.getJSON('../cache/analyze.json', function (data) {
 
-      ['processed_count', 'ways_count', 'relations_count', 'errors_effective_count', 'errors_ignored_count', 'download_count', 'download_bytes']
-        .forEach((key, idx) => {
-          const $t = $rgTemplate.clone().contents();
-          switch (key) {
-            //case 'download_bytes': value = (value / 1024 ) + ' Mo' ; break;
-            case 'download_bytes': value = bytesForHuman(data[key]); break;
-            default:
-              value = data[key];
-          }
-          $('.label', $t).html(key);
-          $('.value', $t).html(value);
-          $t.appendTo($bloc);
+        let value;
+        let $bloc = $('#results-global');
+        const $rgTemplate = $('#result-global-template');
+
+        // Global
+
+        ['processed_count', 'relations_count', 'ways_count', 'errors_effective_count', 'errors_ignored_count', 'download_count', 'download_bytes']
+          .forEach((key, idx) => {
+            const $t = $rgTemplate.clone().contents();
+            switch (key) {
+              //case 'download_bytes': value = (value / 1024 ) + ' Mo' ; break;
+              case 'download_bytes': value = bytesForHuman(data[key]); break;
+              default:
+                value = data[key];
+            }
+            $('.label', $t).html(key);
+            $('.value', $t).html(value);
+            $t.appendTo($bloc);
+          });
+
+        // Configuration
+
+        $bloc = $('#overpass-instances table tbody');
+        $bloc.empty();
+        data['config']['overpass']['instances'].forEach((url, idx) => {
+          $('<tr><td>' + url + '</td></tr>').appendTo($bloc);
         });
 
-      $bloc = $('#overpass-instances ul');
-      $bloc.empty();
-      data['config']['overpass']['instances'].forEach((url, idx) => {
-        $('<li>' + url + '</li>').appendTo($bloc);
-      });
+        $bloc = $('#ignored-errors table tbody');
+        const errors_ignored = data['config']['errors']['ignore_types'];
+        Object.keys(errors_ignored).forEach((k, idx) => {
+          const rule = errors_ignored[k];
+          let html = '<tr><td>' + k + '</td><td>';
+          if (typeof rule == 'boolean') {
+            html += rule;
+          } else if (typeof rule == 'object' && Array.isArray(rule)) {
+            html += rule.join(', ');
+          } else {
+            html += '<span class="text-danger">Configuration error</span>';
+          }
+          html += '</td></tr>';
+          $(html).appendTo($bloc);
 
-      // Axes table
+        });
 
-      const columns = [];
-      columns.push({
-        data: 'ref', title: 'Axe', render: (data, type, row, meta) => {
-          return '<span class="fw-bold">' + data +'</span>'
-            + ' <a href="' + get_josm_link(data) + '" onclick="josmEdit(this,event)">josm</a>'
-            + ' <a href="' + get_overpassturbo_link(data) + '" target="_blank">overpass</a>'
-            ;
-        }
-      });
-      columns.push({
-        title: 'check time',
-        data: 'start_at', render: {
-          _: 'd',
-          sort: 't'
-        }
-      });
-      columns.push({
-        title: 'has errors', data: 'has_errors', render: (data, type, row, meta) => {
-          return data == 0
-          ? '<span class="text-success">'+data+'</span>'
-          : '<span class="text-danger">'+data+'</span>'
-            ;
-        }
-      });
-      data['config']['errors']['keys'].forEach((k, idx) => {
-        let s = k.replaceAll('_', ' ');
-        columns.push({ data: k, 'title': s });
-      });
+        // Axes table
 
-      table = new DataTable('#results-table', {
-        'searching': true,
-        'ordering': true,
-        'pageLength': 150,
-        'lengthMenu': [50, 150, 500, { label: 'All', value: -1 }],
-        columns: columns,
+        const columns = [];
+        columns.push({
+          data: 'ref', title: 'Axe', render: (data, type, row, meta) => {
+            return '<span class="fw-bold">' + data + '</span>'
+              + ' <a href="' + get_josm_link(data) + '" onclick="josmEdit(this,event)">josm</a>'
+              + ' <a href="' + get_overpassturbo_link(data) + '" target="_blank">overpass</a>'
+              ;
+          }
+        });
+        columns.push({
+          title: 'check time',
+          data: 'start_at', render: {
+            _: 'd',
+            sort: 't'
+          }
+        });
+        columns.push({
+          title: 'has errors', data: 'has_errors', name: 'has_errors', render: (data, type, row, meta) => {
+            return data == 0
+              ? '<span class="text-success">' + data + '</span>'
+              : '<span class="text-danger">' + data + '</span>'
+              ;
+          }
+        });
+        data['config']['errors']['keys'].forEach((k, idx) => {
+          let s = k.replaceAll('_', ' ');
+          columns.push({ data: k, 'title': s });
+        });
+
+        table = new DataTable('#results-table', {
+          'searching': true,
+          'ordering': true,
+          'pageLength': 150,
+          'lengthMenu': [50, 150, 500, { label: 'All', value: -1 }],
+          layout: {
+            topStart: null, topEnd: null,
+            top: [
+              'pageLength', 'info', 'paging',
+            ],
+            top2Start: 'search',
+          },
+          order: { name: 'has_errors', dir: 'desc' },
+          columns: columns,
+
+        });
+
+        // Add rows
+        addRows(data);
+
+        table.draw();
 
       });
-
-      // Add rows
-      addRows(data);
-  
-      table.draw();
-
-    });
+    }
 
     function addRows(data) {
 
@@ -140,51 +244,26 @@
         let axe = data['axes'][ref];
 
         let row = {
-          'ref':ref ,
+          'ref': ref,
           'start_at': {
             d: new Date(axe['start_at'] * 1000).toLocaleString(),
             t: axe['start_at'],
           }
         };
+
         let has_errors = 0;
         data['config']['errors']['keys'].forEach((k, idx) => {
 
           row[k] = '';
           if (axe['errors_ignored_count'][k]) {
             row[k] = '<span class="text-warning-emphasis">ignored: ' + axe['errors_ignored_count'][k] + '</span>';
-            has_errors = axe['errors_ignored_count'][k];
+            // Don't take ignored error for "has_errors" column
+            //has_errors += axe['errors_ignored_count'][k];
           }
           else if (axe['errors'][k]) {
             row[k] = '<span class="text-danger">errors: ' + axe['errors'][k].length + '</span>';
-            has_errors = axe['errors'][k].length;
+            has_errors += axe['errors'][k].length;
           }
-
-          /*
-          const errors_ignored = data['config']['errors']['ignore_types'];
-            let ignored = false;
-            if (errors_ignored[k]) {
-              //if( ref=='R320')
-              //  console.debug(k, typeof errors_ignored[k], errors_ignored[k]);
-          
-              switch (typeof errors_ignored[k]) {
-                case 'boolean':
-                  if (errors_ignored[k] == true)
-                    ignored = true;
-                  break;
-                case 'object': // Must be an Array
-                  if (errors_ignored[k].includes(ref))
-                    ignored = true;
-                  break;
-                default:
-                  console.error('Unknow case:', k, typeof errors_ignored[k], errors_ignored[k]);
-              }
-            }
-            if (ignored)
-              row[k] = 'ignored';
-            else if (axe['errors'][k])
-              row[k] = axe['errors'][k].length;
-            */
-
         });
 
         row['has_errors'] = has_errors;
@@ -236,8 +315,8 @@
 
     function get_josm_link(ref) {
       const link = 'http://127.0.0.1:8111/import'
-      +'?new_layer=true'
-      +'&url=https://overpass-api.de/api/interpreter?data=' + encodeURI(get_overpass_query(ref))
+        + '?new_layer=true'
+        + '&url=https://overpass-api.de/api/interpreter?data=' + encodeURI(get_overpass_query(ref))
         ;
       return link;
     }
@@ -261,6 +340,22 @@
           clearTimeout(timeoutId);
           iframe.remove();
         });
+    }
+
+    function initCollapsibles() {
+
+      var coll = document.getElementsByClassName('collapsible');
+      for (let i = 0; i < coll.length; i++) {
+        coll[i].addEventListener('click', function () {
+          this.classList.toggle('active');
+          var content = this.nextElementSibling;
+          if (content.style.maxHeight) {
+            content.style.maxHeight = null;
+          } else {
+            content.style.maxHeight = content.scrollHeight + 'px';
+          }
+        });
+      }
     }
 
   </script>
