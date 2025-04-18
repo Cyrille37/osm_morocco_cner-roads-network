@@ -6,9 +6,9 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Morocco roads network analyze results</title>
 
+  <link href="https://cdn.datatables.net/2.2.2/css/dataTables.dataTables.min.css" rel="stylesheet" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/css/bootstrap.min.css" rel="stylesheet"
     integrity="sha384-SgOJa3DmI69IUzQ2PVdRZhwQ+dy64/BUtbMJw1MZ8t5HZApcHrRKUc4W0kG879m7" crossorigin="anonymous" />
-  <link href="https://cdn.datatables.net/2.2.2/css/dataTables.dataTables.min.css" rel="stylesheet" />
 
   <style>
     div.dt-container .dt-paging .dt-paging-button {
@@ -58,6 +58,10 @@
       overflow: hidden;
       transition: max-height 0.2s ease-out;
       background-color: #f1f1f1;
+    }
+
+    a.link:after {
+      content: "➶";
     }
   </style>
 </head>
@@ -110,15 +114,9 @@
     </div>
 
     <div>
-      <table id="results-table">
-        <thead>
-          <tr>
-            <th zdata-data="ref" zdata-name="ref"></th>
-          </tr>
-        </thead>
+      <table id="results-table" class="table">
       </table>
     </div>
-
   </section>
 
   <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"
@@ -187,8 +185,8 @@
         columns.push({
           data: 'ref', title: 'Axe', render: (data, type, row, meta) => {
             return '<span class="fw-bold">' + data + '</span>'
-              + ' <a href="' + get_josm_link(data) + '" onclick="josmEdit(this,event)">josm</a>'
-              + ' <a href="' + get_overpassturbo_link(data) + '" target="_blank">overpass</a>'
+              + ' <a class="link" href="' + get_josm_import_link(get_overpass_link(data)) + '" onclick="josmEdit(this,event)">josm</a>'
+              + ' <a class="link" href="' + get_overpassturbo_link(data) + '" target="_blank">overpass</a>'
               ;
           }
         });
@@ -261,8 +259,28 @@
             //has_errors += axe['errors_ignored_count'][k];
           }
           else if (axe['errors'][k]) {
-            row[k] = '<span class="text-danger">errors: ' + axe['errors'][k].length + '</span>';
             has_errors += axe['errors'][k].length;
+
+            switch (k) {
+              case 'match_rr_cner':
+                row[k] = '<span class="text-danger">errors: ' + axe['errors'][k].length + '</span>'
+                  + ' <a class="link" href="' + get_josm_import_link(get_rr_geojson_link(ref, true), true) + '" onclick="josmEdit(this,event)">josm</a>'
+                  ;
+                break;
+              case 'ways_not_in_relation':
+                row[k] = '<span class="text-danger">errors: ' + axe['errors'][k].length + '</span>';
+                if( axe['errors'][k].length <= 10 )
+                {
+                  row[k] += axe['errors'][k].reduce( (ac,value) => {
+                    ac += '<br/>' + value.replace('way: ','');
+                    return ac ;
+                  }, '');
+                }
+                break;
+              default:
+                row[k] = '<span class="text-danger">errors: ' + axe['errors'][k].length + '</span>';
+            }
+
           }
         });
 
@@ -287,9 +305,6 @@
     }
 
     function get_overpass_query(ref) {
-      /*
-      http://127.0.0.1:8111/import?url=http://overpass-api.de/api/interpreter?data=%5Bout:xml%5D%20%5Btimeout:30%5D;%0A%20area%5Badmin_level=2%5D%5B%22wikidata%22=%22Q1028%22%5D-%3E.country;%0A%20(%0A%20rel%5Bref~%22(%5E%7C;)(R)?%3Cspan%20class=%22fw-bold%22%3EP1705%3C/span%3E($%7C;)%22%5D(area.country);%0A%20%3E%3E;%0A%20way%5Bref~%22(%5E%7C;)(R)?%3Cspan%20class=%22fw-bold%22%3EP1705%3C/span%3E($%7C;)%22%5D(area.country);%0A%20%3E;%0A%20);%0A%20out%20meta;%0A%20
-      */
       let q = `[out:xml] [timeout:30];
             area[admin_level=2]["wikidata"="Q1028"]->.country;
             (
@@ -305,6 +320,18 @@
       return q;
     }
 
+    function get_rr_geojson_link(ref, simplified) {
+
+      let url = window.location.toString();
+      url = url.substring(0, url.lastIndexOf('/'));
+      // N7_rr_simplified.geojson
+      if (simplified)
+        url += '/../cache/' + ref + '_rr_simplified.geojson';
+      else
+        url += '/../split/' + ref + '_rr.geojson';
+      return url;
+    }
+
     function get_overpass_link(ref) {
       return 'https://overpass-api.de/api/interpreter?data=' + encodeURI(get_overpass_query(ref));
     }
@@ -313,10 +340,13 @@
       return 'https://overpass-turbo.eu/?Q=' + encodeURI(get_overpass_query(ref));
     }
 
-    function get_josm_link(ref) {
+    function get_josm_import_link(importUrl, locked) {
       const link = 'http://127.0.0.1:8111/import'
         + '?new_layer=true'
-        + '&url=https://overpass-api.de/api/interpreter?data=' + encodeURI(get_overpass_query(ref))
+        // cannot select object in a locked layer
+        //+ '&layer_locked=' +(locked?'true':'false')
+        + '&upload_policy=' +(locked?'false':'true')
+        + '&url=' + importUrl
         ;
       return link;
     }
