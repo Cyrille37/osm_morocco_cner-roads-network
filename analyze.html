@@ -226,7 +226,7 @@
         render: {
           sort: 'c',
           _: (data, type, row, meta) => {
-            return data == 0
+            return data.c == 0
               ? '<span class="text-success">' + data.c + '</span>'
               : '<span class="text-danger">' + data.d + '</span>'
               ;
