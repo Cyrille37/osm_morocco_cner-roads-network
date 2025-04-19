@@ -75,7 +75,6 @@ class Common
                 return $result;
             }
         }
-        echo "\t", 'download...', "\n";
 
         // Select an Overpass instance,
         // and compute if it's time to sleep.
@@ -104,20 +103,21 @@ class Common
             ],
         ]);
 
-
         $retry_max = 3;
         for ($retry = 1; $retry <= $retry_max; $retry++) {
             try {
+                echo "\t", 'download (', $retry, '/', $retry_max, ') ...', "\n";
                 $json = @file_get_contents($url, false, $context);
                 if ($json === false) {
                     throw new DownloadException($url, error_get_last(), $http_response_header);
                 }
+                break;
             } catch (DownloadException $ex) {
                 echo Ansi::TAB, Ansi::BACKGROUND_RED, Ansi::WHITE, 'Download failed: (', $ex->getCode(),') ', $ex->getMessage(), Ansi::CLOSE, "\n";
                 if ($retry == $retry_max) {
                     die('Too many retries, exiting' . "\n");
                 }
-                echo Ansi::TAB,  'Retrying ', $retry, '/', $retry_max, ' ...', "\n";
+                echo Ansi::TAB,  'Retrying ...', "\n";
                 sleep(5);
             }
         }
