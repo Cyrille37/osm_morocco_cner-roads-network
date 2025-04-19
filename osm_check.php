@@ -68,8 +68,8 @@ include(__DIR__ . '/config.inc.php');
 readOptions();
 
 // To save $stats in a file.
-$resultFile = $config['analyze_results']['file'] ;
-$resultFreq = $config['analyze_results']['save_freq']??0 ;
+$resultFile = $config['analyze_results']['file'];
+$resultFreq = $config['analyze_results']['save_freq'] ?? 0;
 
 $stats = [
     'start_at' => time(),
@@ -88,14 +88,14 @@ $stats = [
 
 $common = new Common($config, $stats);
 
-$historyFile = new HistoryFile( $config['historyFile']);
+$historyFile = new HistoryFile($config['historyFile']);
 
 pcntl_async_signals(TRUE);
-pcntl_signal(SIGINT,'pcntl_signal_handler');
-function pcntl_signal_handler(int $signo, mixed $siginfo):void
+pcntl_signal(SIGINT, 'pcntl_signal_handler');
+function pcntl_signal_handler(int $signo, mixed $siginfo): void
 {
     global $historyFile;
-    echo 'Saving HistoryFile',"\n";
+    echo 'Saving HistoryFile', "\n";
     $historyFile->save();
     die();
 }
@@ -145,15 +145,13 @@ while ($row = fgetcsv($axesFile)) {
 
     process_ref($row);
 
-    $historyFile->update($ref, count( $stats['axes'][$ref]['errors'] )> 0 ? true : false );
+    $historyFile->update($ref, count($stats['axes'][$ref]['errors']) > 0 ? true : false);
 
-    $stats['processed_count']++ ;
+    $stats['processed_count']++;
 
     // Periodically save $stats in a file.
-    if( $resultFreq > 0 )
-    {
-        if ($stats['processed_count'] % $resultFreq == 0)
-        {
+    if ($resultFreq > 0) {
+        if ($stats['processed_count'] % $resultFreq == 0) {
             file_put_contents($resultFile, json_encode($stats));
             $historyFile->save();
         }
@@ -232,8 +230,8 @@ function add_error($ref, $type, $err)
 {
     global $config, $stats, $common;
 
-    if( ! in_array($type, $config['errors']['keys'] ) )
-        throw new \InvalidArgumentException('Unknow error type, sync your code by adding "'.$type.'" in config.errors.keys array');
+    if (! in_array($type, $config['errors']['keys']))
+        throw new \InvalidArgumentException('Unknow error type, sync your code by adding "' . $type . '" in config.errors.keys array');
 
     $skip = false;
     if (isset($config['errors']['ignore_types'][$type])) {
@@ -247,20 +245,17 @@ function add_error($ref, $type, $err)
     if ($skip) {
         $stats['errors_ignored_count']++;
 
-        if( ! isset($stats['axes'][$ref]['errors_ignored_count'][$type]) )
-        {
-            $stats['axes'][$ref]['errors_ignored_count'][$type] = 1 ;
-        }
-        else
-        {
-            $stats['axes'][$ref]['errors_ignored_count'][$type] ++ ;
+        if (! isset($stats['axes'][$ref]['errors_ignored_count'][$type])) {
+            $stats['axes'][$ref]['errors_ignored_count'][$type] = 1;
+        } else {
+            $stats['axes'][$ref]['errors_ignored_count'][$type]++;
         }
         return;
     }
 
     $stats['errors_effective_count']++;
 
-    if( ! isset($stats['axes'][$ref]['errors'][$type]) )
+    if (! isset($stats['axes'][$ref]['errors'][$type]))
         $stats['axes'][$ref]['errors'][$type] = [];
     $stats['axes'][$ref]['errors'][$type][] = $err;
 
@@ -396,6 +391,8 @@ function compare_with_rr_cner($ref, $xmlWays)
     // Make rectangles from OSM data
 
     $rectangles_osm = [];
+
+    // Iterate OSM ways
     foreach ($xmlWays as $way) {
         $nc = count($way->nd);
         for ($i = 0; $i < $nc - 1; $i++) {
@@ -435,33 +432,43 @@ function compare_with_rr_cner($ref, $xmlWays)
     $rectangles_rr_cner = [];
     $cacheRectsFeatures = [];
 
-    foreach ($featureCollection as $feature) {
+    // Iterate RR features
+    foreach ($featureCollection as
+    /** @var \GeoJson\Feature\Feature $feature */
+    $feature) {
+
+        $props = $feature->getProperties();
+        $rr_etat = $props['etat'] ?? null;
+
         $coords = $feature->getGeometry()->getCoordinates();
         $coordsCount = count($coords);
         for ($i = 0; $i < $coordsCount; $i++) {
             $coord = $coords[$i];
             $point = [$coord[0], $coord[1]];
 
+            // Build rectangle
             if ($i < $coordsCount - 1) {
                 $coord2 = $coords[$i + 1];
                 $rect = GeometryTools::computeRectangle($point[1], $point[0], $coord2[1], $coord2[0], $width, $length);
                 $rectangles_rr_cner[] = $rect;
-
                 if ($cacheRects) {
                     $cacheRectsFeatures[] = new Feature(new LineString($rect), []);
                 }
             }
 
-            $isInside = false;
-            foreach ($rectangles_osm as $rect) {
-                $isInside = GeometryTools::isPointInPolygon($point, $rect);
-                if ($isInside)
-                    break;
-            }
-            if (! $isInside) {
-                //echo "\t", 'cner dont match osm: segment:', $coordsCount, ' position:', $i, "\n";
-                add_error($ref, 'match_rr_cner', 'cner dont match osm: segment:' . $coordsCount . ' position:' . $i);
-                $cnerMatchWays = false;
+            // Don't check RR in OSM if "etat=-1"
+            if ($rr_etat != '-1') {
+                $isInside = false;
+                foreach ($rectangles_osm as $rect) {
+                    $isInside = GeometryTools::isPointInPolygon($point, $rect);
+                    if ($isInside)
+                        break;
+                }
+                if (! $isInside) {
+                    //echo "\t", 'cner dont match osm: segment:', $coordsCount, ' position:', $i, "\n";
+                    add_error($ref, 'match_rr_cner', 'cner dont match osm: segment:' . $coordsCount . ' position:' . $i);
+                    $cnerMatchWays = false;
+                }
             }
         }
     }
@@ -476,7 +483,9 @@ function compare_with_rr_cner($ref, $xmlWays)
 
     $wayMatchCNER = true;
 
+    // Iterate OSM ways
     foreach ($xmlWays as $way) {
+
         $nc = count($way->nd);
         for ($i = 0; $i < $nc - 1; $i++) {
             $nodeId = (string) $way->nd[$i]['ref'];
