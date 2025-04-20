@@ -68,6 +68,11 @@
       text-decoration-line: underline;
 
     }
+
+    #results-table thead .error-counts {
+      font-weight: normal;
+      font-size: 85%;
+    }
   </style>
 </head>
 
@@ -156,12 +161,17 @@
 
       // Global
 
-      ['processed_count', 'relations_count', 'ways_count', 'errors_effective_count', 'errors_ignored_count', 'download_count', 'download_bytes']
+      ['processed_count', 'relations_count', 'ways_count', 'errors_effective_counts', 'errors_ignored_counts', 'download_count', 'download_bytes']
         .forEach((key, idx) => {
           const $t = $rgTemplate.clone().contents();
           switch (key) {
             //case 'download_bytes': value = (value / 1024 ) + ' Mo' ; break;
-            case 'download_bytes': value = bytesForHuman(data[key]); break;
+            case 'download_bytes': value = bytesForHuman(data[key]);
+              break;
+            case 'errors_ignored_counts':
+            case 'errors_effective_counts':
+              value = Object.keys(data[key]).reduce((acc, k) => acc += data[key][k], 0);
+              break;
             default:
               value = data[key];
           }
@@ -237,7 +247,13 @@
 
       // Columns for errors
       data['config']['errors']['keys'].forEach((k, idx) => {
-        let title = k.replaceAll('_', ' ');
+        let title = k.replaceAll('_', ' ')
+          + ' <span class="error-counts">'
+          + '<span class="text-danger">' + data['errors_effective_counts'][k] + '<span>'
+          + '/'
+          + '<span class="text-warning-emphasis">' + data['errors_ignored_counts'][k] + '<span>'
+          + '<span>'
+          ;
         columns.push({
           data: k, 'title': title, type: 'num', render: {
             _: 'd',
@@ -312,8 +328,8 @@
               case 'ways_not_in_relation':
                 datum.d = '<span class="text-danger">errors: ' + datum.c + '</span>';
                 if (datum.c <= 10) {
-                  datum.d += axe['errors'][k].reduce((ac, value) => {
-                    ac += '<br/>' + value.replace('way: ', '');
+                  datum.d += '<br/>ways: ' + axe['errors'][k].reduce((ac, value) => {
+                    ac += value.replace('way: ', ' ');
                     return ac;
                   }, '');
                 }

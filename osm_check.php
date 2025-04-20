@@ -79,8 +79,8 @@ $stats = [
     'download_bytes' => 0,
     'ways_count' => 0,
     'relations_count' => 0,
-    'errors_effective_count' => 0,
-    'errors_ignored_count' => 0,
+    'errors_effective_counts' => [],
+    'errors_ignored_counts' => [],
     'resultFile' => $resultFile,
     'axes' => [],
     'config' => $config,
@@ -233,6 +233,14 @@ function add_error($ref, $type, $err)
     if (! in_array($type, $config['errors']['keys']))
         throw new \InvalidArgumentException('Unknow error type, sync your code by adding "' . $type . '" in config.errors.keys array');
 
+    // initialisation
+    if (empty($stats['errors_effective_counts'])) {
+        foreach ($config['errors']['keys'] as $key) {
+            $stats['errors_effective_counts'][$key] = 0;
+            $stats['errors_ignored_counts'][$key] = 0;
+        }
+    }
+
     $skip = false;
     if (isset($config['errors']['ignore_types'][$type])) {
         $rule = $config['errors']['ignore_types'][$type];
@@ -243,7 +251,7 @@ function add_error($ref, $type, $err)
     }
 
     if ($skip) {
-        $stats['errors_ignored_count']++;
+        $stats['errors_ignored_counts'][$type]++;
 
         if (! isset($stats['axes'][$ref]['errors_ignored_count'][$type])) {
             $stats['axes'][$ref]['errors_ignored_count'][$type] = 1;
@@ -253,7 +261,7 @@ function add_error($ref, $type, $err)
         return;
     }
 
-    $stats['errors_effective_count']++;
+    $stats['errors_effective_counts'][$type]++;
 
     if (! isset($stats['axes'][$ref]['errors'][$type]))
         $stats['axes'][$ref]['errors'][$type] = [];
@@ -299,7 +307,7 @@ function process_ref(&$row)
         // Assert ref start with 'R'
         $relRef = Common::osm_object_get_tag($rel, 'ref');
         if (! $relRef || ! preg_match('#(?:^|;)R' . $ref . '(?:$|;)#', $relRef)) {
-            add_error($ref, 'mismatch_ref', 'rel: ' . (string) $rel['id'] . ', ref: ' . $relRef);
+            add_error($ref, 'mismatch_ref', 'rel: ' . (string) $rel['id'] . ' ref: ' . $relRef);
         }
 
         // Store way members found in relation
@@ -433,9 +441,11 @@ function compare_with_rr_cner($ref, $xmlWays)
     $cacheRectsFeatures = [];
 
     // Iterate RR features
-    foreach ($featureCollection as
-    /** @var \GeoJson\Feature\Feature $feature */
-    $feature) {
+    foreach (
+        $featureCollection as
+        /** @var \GeoJson\Feature\Feature $feature */
+        $feature
+    ) {
 
         $props = $feature->getProperties();
         $rr_etat = $props['etat'] ?? null;
