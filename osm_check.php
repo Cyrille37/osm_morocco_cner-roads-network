@@ -94,8 +94,10 @@ pcntl_async_signals(TRUE);
 pcntl_signal(SIGINT, 'pcntl_signal_handler');
 function pcntl_signal_handler(int $signo, mixed $siginfo): void
 {
-    global $historyFile;
-    echo 'Saving HistoryFile', "\n";
+    global $historyFile,$resultFile,$stats;
+    echo 'Saving Analyze file', "\n";
+    file_put_contents($resultFile, json_encode($stats));
+    echo 'Saving History file', "\n";
     $historyFile->save();
     die();
 }
