@@ -75,6 +75,7 @@ $stats = [
     'start_at' => time(),
     'end_at' => null,
     'processed_count' => 0,
+    'skipped_count' => 0,
     'download_count' => 0,
     'download_bytes' => 0,
     'ways_count' => 0,
@@ -88,13 +89,13 @@ $stats = [
 
 $common = new Common($config, $stats);
 
-$historyFile = new HistoryFile($config['historyFile']);
+$historyFile = new HistoryFile($config['history']);
 
 pcntl_async_signals(TRUE);
 pcntl_signal(SIGINT, 'pcntl_signal_handler');
 function pcntl_signal_handler(int $signo, mixed $siginfo): void
 {
-    global $historyFile,$resultFile,$stats;
+    global $historyFile, $resultFile, $stats;
     echo 'Saving Analyze file', "\n";
     file_put_contents($resultFile, json_encode($stats));
     echo 'Saving History file', "\n";
@@ -129,8 +130,6 @@ while ($row = fgetcsv($axesFile)) {
         }
     }
 
-    echo Ansi::BOLD, 'Processing ', $ref, Ansi::CLOSE, Ansi::EOL;
-
     $stats['axes'][$ref] = [
         'start_at' => time(),
         'relation' => 0,
@@ -145,11 +144,18 @@ while ($row = fgetcsv($axesFile)) {
         'errors' => [],
     ];
 
-    process_ref($row);
+    if ($historyFile->needUpdate($ref, $stats['start_at']) || (! file_exists($common->osm_filename($ref)))) {
 
-    $historyFile->update($ref, count($stats['axes'][$ref]['errors']) > 0 ? true : false);
-
-    $stats['processed_count']++;
+        echo Ansi::BOLD, 'Processing ', $ref, Ansi::CLOSE, Ansi::EOL;
+        process_ref($row);
+        $historyFile->update($ref, count($stats['axes'][$ref]['errors']) > 0 ? true : false);
+        $stats['processed_count']++;
+    }
+    else
+    {
+        echo 'Skip ', $ref, Ansi::EOL;
+        $stats['skipped_count'] ++ ;
+    }
 
     // Periodically save $stats in a file.
     if ($resultFreq > 0) {
@@ -286,7 +292,7 @@ function process_ref(&$row)
 
     $ref = $row[$config['axes_csv']['columns']['axe']];
 
-    $result = $common->download_osm($ref, $config['download_force']);
+    $result = $common->download_osm($ref);
     $stats['axes'][$ref]['download'] = $result;
 
     $osm_file = $config['cacheFolder'] . '/' . $ref . '_osm.osm';

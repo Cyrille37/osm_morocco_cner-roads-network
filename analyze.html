@@ -161,10 +161,13 @@
 
       // Global
 
-      ['processed_count', 'relations_count', 'ways_count', 'errors_effective_counts', 'errors_ignored_counts', 'download_count', 'download_bytes']
+      ['total_count','processed_count', 'skipped_count', 'relations_count', 'ways_count', 'errors_effective_counts', 'errors_ignored_counts', 'download_count', 'download_bytes']
         .forEach((key, idx) => {
           const $t = $rgTemplate.clone().contents();
           switch (key) {
+            case 'total_count':
+              value = data['processed_count'] + data['skipped_count'];
+              break;
             //case 'download_bytes': value = (value / 1024 ) + ' Mo' ; break;
             case 'download_bytes': value = bytesForHuman(data[key]);
               break;

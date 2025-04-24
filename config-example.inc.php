@@ -15,7 +15,10 @@ $config = [
     // cache computed rects. Defaut to false.
     'cacheRects' => false,
 
-    'historyFile' =>  'cache/history.json',
+    'history' => [
+        'file' => 'cache/history.json',
+        'check_ok_ttl' => 60 * 60 * 48,
+    ],
 
     //'splitsFolder' => __DIR__ . '/output',
     'splitsFolder' => 'split',
@@ -39,8 +42,6 @@ $config = [
 
     'overpass' => [
         'sleep' => 20,
-        // To automatically force download if cache file is older than
-        //'expire_after_seconds' => 60 * 60 * 24,
         'instances' => [
             'https://overpass.private.coffee/api/interpreter',    
             'https://overpass-api.de/api/interpreter',

@@ -51,30 +51,15 @@ class Common
         return $query;
     }
 
-    function &download_osm($ref, $force = false)
+    function &download_osm($ref)
     {
         $output_file = $this->osm_filename($ref);
 
-        if (! $force && isset($this->config['overpass']['expire_after_seconds'])) {
-            if (
-                file_exists($output_file)
-                && (filemtime($output_file) + $this->config['overpass']['expire_after_seconds']) < time()
-            )
-                $force = true;
-        }
-
         $result = [
-            'force' => $force,
             'file' => null,
             'bytes' => -1,
             'instance' => null,
         ];
-
-        if (! $force) {
-            if (file_exists($output_file)) {
-                return $result;
-            }
-        }
 
         // Select an Overpass instance,
         // and compute if it's time to sleep.
