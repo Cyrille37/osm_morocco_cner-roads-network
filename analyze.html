@@ -120,6 +120,17 @@
             <tbody></tbody>
           </table>
         </div>
+        <div id="other-configs">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th>other config</th>
+                <th>value</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
       </div>
     </div>
 
@@ -161,7 +172,7 @@
 
       // Global
 
-      ['total_count','processed_count', 'skipped_count', 'relations_count', 'ways_count', 'errors_effective_counts', 'errors_ignored_counts', 'download_count', 'download_bytes']
+      ['total_count', 'processed_count', 'skipped_count', 'relations_count', 'ways_count', 'errors_effective_counts', 'errors_ignored_counts', 'download_count', 'download_bytes']
         .forEach((key, idx) => {
           const $t = $rgTemplate.clone().contents();
           switch (key) {
@@ -207,6 +218,15 @@
         $(html).appendTo($bloc);
 
       });
+
+      $bloc = $('#other-configs table tbody');
+      $bloc.empty();
+      $('<tr><td>history.check_ok_ttl</td><td>' + data['config']['history']['check_ok_ttl'] + '</td></tr>').appendTo($bloc);
+      $('<tr><td>geometry.simplifier_factor</td><td>' + data['config']['geometry']['simplifier_factor'] + '</td></tr>').appendTo($bloc);
+      $('<tr><td>geometry.bouding-box</td><td>'
+        + data['config']['geometry']['bouding-box']['padding-x'] + ' x ' + data['config']['geometry']['bouding-box']['padding-y']
+        + '</td></tr>').appendTo($bloc);
+
 
     }
 
