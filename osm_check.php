@@ -154,6 +154,7 @@ while ($row = fgetcsv($axesFile)) {
     else
     {
         echo 'Skip ', $ref, Ansi::EOL;
+        $stats['axes'][$ref]['start_at'] = $historyFile->getOkAt($ref);
         $stats['skipped_count'] ++ ;
     }
 
@@ -165,13 +166,11 @@ while ($row = fgetcsv($axesFile)) {
         }
     }
 }
+fclose($axesFile);
 
 $historyFile->save();
 
-fclose($axesFile);
-
 $stats['end_at'] = time();
-
 // Save $stats in a file.
 file_put_contents($resultFile, json_encode($stats));
 
@@ -179,8 +178,8 @@ unset($stats['config']);
 unset($stats['axes']);
 echo 'Stats: ', print_r($stats, true), "\n";
 
-if ($stats['processed_count'] == 0)
-    echo Ansi::BACKGROUND_BLACK, Ansi::YELLOW, 'Nothing processed, check "--process_only" and/or "config.process_only".', Ansi::CLOSE, Ansi::EOL;
+//if ($stats['processed_count'] == 0)
+//    echo Ansi::BACKGROUND_BLACK, Ansi::YELLOW, 'Nothing processed, check "--process_only" and/or "config.process_only".', Ansi::CLOSE, Ansi::EOL;
 
 //
 // ===== end =====

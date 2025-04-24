@@ -37,6 +37,11 @@ class HistoryFile
         return false ;
     }
 
+    public function getOkAt(string $ref) : int
+    {
+        return $this->history[$ref]['ok_at'] ?? -1 ;
+    }
+
     public function update( string $ref, bool $hasErrors ):void
     {
         $now = time();

@@ -221,7 +221,9 @@
 
       $bloc = $('#other-configs table tbody');
       $bloc.empty();
-      $('<tr><td>history.check_ok_ttl</td><td>' + data['config']['history']['check_ok_ttl'] + '</td></tr>').appendTo($bloc);
+      $('<tr><td>history.check_ok_ttl</td><td>'
+        + durationForHuman( data['config']['history']['check_ok_ttl'])
+        + '</td></tr>').appendTo($bloc);
       $('<tr><td>geometry.simplifier_factor</td><td>' + data['config']['geometry']['simplifier_factor'] + '</td></tr>').appendTo($bloc);
       $('<tr><td>geometry.bouding-box</td><td>'
         + data['config']['geometry']['bouding-box']['padding-x'] + ' x ' + data['config']['geometry']['bouding-box']['padding-y']
@@ -270,11 +272,13 @@
 
       // Columns for errors
       data['config']['errors']['keys'].forEach((k, idx) => {
+        const err_eff_c = data['errors_effective_counts'][k] ? data['errors_effective_counts'][k] : 0 ;
+        const err_ign_c = data['errors_ignored_counts'][k] ? data['errors_ignored_counts'][k] : 0 ;
         let title = k.replaceAll('_', ' ')
           + ' <span class="error-counts">'
-          + '<span class="text-danger">' + data['errors_effective_counts'][k] + '<span>'
+          + '<span class="text-danger">' + err_eff_c + '<span>'
           + '/'
-          + '<span class="text-warning-emphasis">' + data['errors_ignored_counts'][k] + '<span>'
+          + '<span class="text-warning-emphasis">' + err_ign_c + '<span>'
           + '<span>'
           ;
         columns.push({
@@ -389,6 +393,16 @@
       if (n < (1000 * 1000 * 1000 * 1000))
         return new Intl.NumberFormat().format(n / (1000 * 1000 * 1000)) + ' Go';
       return n;
+    }
+
+    function durationForHuman(n) {
+      if( n < 60 )
+        return n+' seconds';
+      if( n<60*60)
+      return n+' minutes';
+      if( n<60*60*24)
+        return n+' hours';
+       return new Intl.NumberFormat().format((1.0*n)/(60*60*24))+' days';
     }
 
     function get_overpass_query(ref) {
