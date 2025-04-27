@@ -143,6 +143,9 @@
   <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"
     integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
   <script src="https://cdn.datatables.net/2.2.2/js/dataTables.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/js/bootstrap.min.js"
+    integrity="sha384-VQqxDN0EQCkWoxt/0vsQvZswzTHUVOImccYmSyhJTp7kGtPed0Qcx8rK9h9YEgx+"
+    crossorigin="anonymous"></script>
 
   <script>
 
@@ -222,7 +225,7 @@
       $bloc = $('#other-configs table tbody');
       $bloc.empty();
       $('<tr><td>history.check_ok_ttl</td><td>'
-        + durationForHuman( data['config']['history']['check_ok_ttl'])
+        + durationForHuman(data['config']['history']['check_ok_ttl'])
         + '</td></tr>').appendTo($bloc);
       $('<tr><td>geometry.simplifier_factor</td><td>' + data['config']['geometry']['simplifier_factor'] + '</td></tr>').appendTo($bloc);
       $('<tr><td>geometry.bouding-box</td><td>'
@@ -272,8 +275,8 @@
 
       // Columns for errors
       data['config']['errors']['keys'].forEach((k, idx) => {
-        const err_eff_c = data['errors_effective_counts'][k] ? data['errors_effective_counts'][k] : 0 ;
-        const err_ign_c = data['errors_ignored_counts'][k] ? data['errors_ignored_counts'][k] : 0 ;
+        const err_eff_c = data['errors_effective_counts'][k] ? data['errors_effective_counts'][k] : 0;
+        const err_ign_c = data['errors_ignored_counts'][k] ? data['errors_ignored_counts'][k] : 0;
         let title = k.replaceAll('_', ' ')
           + ' <span class="error-counts">'
           + '<span class="text-danger">' + err_eff_c + '<span>'
@@ -282,7 +285,7 @@
           + '<span>'
           ;
         columns.push({
-          data: k, 'title': title, type: 'num', render: {
+          data: k, 'title': title, /*type: 'num',*/ render: {
             _: 'd',
             sort: 'c'
           }
@@ -349,17 +352,34 @@
             switch (k) {
               case 'match_rr_cner':
                 datum.d = '<span class="text-danger">errors: ' + datum.c + '</span>'
-                  + ' <a class="link" href="' + get_josm_import_link(get_rr_geojson_link(ref, true), true) + '" onclick="josmEdit(this,event)">josm</a>'
+                  + ' josm:'
+                  + ' <a class="link" href="' + get_josm_import_link(get_rr_geojson_link(ref, true), true) + '" onclick="josmEdit(this,event)">rr simplified</a>'
+                  + ' <a class="link" href="' + get_josm_import_link(get_rr_geojson_link(ref, false), true) + '" onclick="josmEdit(this,event)">rr normal</a>'
                   ;
+                let html = '';
+                axe['errors'][k].forEach((er, idx) => {
+                  if (er.startsWith('cner!=osm: ')) {
+                    // cner!=osm: segment:104 position:7 point:-8.2941633952958,31.457601448568
+                    const matches = er.match(/point\:([+-]?([0-9]*[.])?[0-9]+),([+-]?([0-9]*[.])?[0-9]+)$/);
+                    html += '<li>cner!=osm <a href="' + get_josm_zoom_link([parseFloat(matches[3]), parseFloat(matches[1])]) + '" onclick="josmEdit(this,event)">jsom</a></li>';
+                  }
+                  else if (er.startsWith('osm!=cner')) {
+                    // osm!=cner: node: 6819652251 point:-7.7929705,31.5847911
+                    const matches = er.match(/node\: ([0-9]+) point\:([+-]?([0-9]*[.])?[0-9]+),([+-]?([0-9]*[.])?[0-9]+)$/);
+                    html += '<li>osm!=cner <a href="' + get_josm_zoom_link([parseFloat(matches[4]), parseFloat(matches[2])]) + '" onclick="josmEdit(this,event)">jsom</a></li>';
+                  }
+                });
+                datum.d += '<ul>' + html + '</ul>';
+
                 break;
               case 'ways_not_in_relation':
                 datum.d = '<span class="text-danger">errors: ' + datum.c + '</span>';
-                if (datum.c <= 10) {
+                //if (datum.c <= 10) {
                   datum.d += '<br/>ways: ' + axe['errors'][k].reduce((ac, value) => {
                     ac += value.replace('way: ', ' ');
                     return ac;
                   }, '');
-                }
+                //}
                 break;
               default:
                 datum.d = '<span class="text-danger">errors: ' + datum.c + '</span>';
@@ -396,13 +416,13 @@
     }
 
     function durationForHuman(n) {
-      if( n < 60 )
-        return n+' seconds';
-      if( n<60*60)
-      return n+' minutes';
-      if( n<60*60*24)
-        return n+' hours';
-       return new Intl.NumberFormat().format((1.0*n)/(60*60*24))+' days';
+      if (n < 60)
+        return n + ' seconds';
+      if (n < 60 * 60)
+        return n + ' minutes';
+      if (n < 60 * 60 * 24)
+        return n + ' hours';
+      return new Intl.NumberFormat().format((1.0 * n) / (60 * 60 * 24)) + ' days';
     }
 
     function get_overpass_query(ref) {
@@ -448,6 +468,21 @@
         //+ '&layer_locked=' +(locked?'true':'false')
         + '&upload_policy=' + (locked ? 'false' : 'true')
         + '&url=' + importUrl
+        ;
+      return link;
+    }
+
+    function get_josm_zoom_link(point) {
+      const k = .002;
+      const bbox = [
+        // left, top
+        point[1] - k, point[0] + k,
+        // right, bottom
+        point[1] + k, point[0] - k,
+      ];
+      const link = 'http://127.0.0.1:8111/zoom'
+        + '?'
+        + 'left=' + bbox[0] + '&right=' + bbox[2] + '&top=' + bbox[1] + '&bottom=' + bbox[3]
         ;
       return link;
     }

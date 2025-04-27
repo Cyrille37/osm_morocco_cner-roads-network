@@ -385,10 +385,10 @@ function process_ref(&$row)
 
     list($cnerMatchWays, $wayMatchCNER) = compare_with_rr_cner($ref, $xml->way);
     if (! $cnerMatchWays) {
-        add_error($ref, 'match_rr_cner', 'cner dont match ways');
+        add_error($ref, 'match_rr_cner', 'cner dont match osm');
     }
     if (! $wayMatchCNER) {
-        add_error($ref, 'match_rr_cner', 'ways dont match cner');
+        add_error($ref, 'match_rr_cner', 'osm dont match cner');
     }
 }
 
@@ -474,7 +474,7 @@ function compare_with_rr_cner($ref, $xmlWays)
             }
 
             // Don't check RR in OSM if "etat=-1"
-            if ($rr_etat != '-1') {
+            if ( ! in_array($rr_etat, [null, '-1']) ) {
                 $isInside = false;
                 foreach ($rectangles_osm as $rect) {
                     $isInside = GeometryTools::isPointInPolygon($point, $rect);
@@ -482,8 +482,7 @@ function compare_with_rr_cner($ref, $xmlWays)
                         break;
                 }
                 if (! $isInside) {
-                    //echo "\t", 'cner dont match osm: segment:', $coordsCount, ' position:', $i, "\n";
-                    add_error($ref, 'match_rr_cner', 'cner dont match osm: segment:' . $coordsCount . ' position:' . $i);
+                    add_error($ref, 'match_rr_cner', 'cner!=osm: segment:' . $coordsCount . ' position:' . $i.' point:'.$coord[0].','.$coord[1]);
                     $cnerMatchWays = false;
                 }
             }
@@ -516,8 +515,7 @@ function compare_with_rr_cner($ref, $xmlWays)
                     break;
             }
             if (! $isInside) {
-                //echo "\t", 'node dont match cner: ', $nodeId, "\n";
-                add_error($ref, 'match_rr_cner', 'node dont match cner: ' . $nodeId);
+                add_error($ref, 'match_rr_cner', 'osm!=cner: node: ' . $nodeId.' point:'.$lon1.','.$lat1);
                 $wayMatchCNER = false;
             }
         }
