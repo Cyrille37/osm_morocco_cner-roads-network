@@ -69,6 +69,15 @@
 
     }
 
+    .text-sm {
+      font-size: 80%;
+    }
+
+    #results-table tbody td.error ul {
+      padding-left: 0;
+
+    }
+
     #results-table thead .error-counts {
       font-weight: normal;
       font-size: 85%;
@@ -156,7 +165,9 @@
 
     function loadResults() {
 
-      $.when($.getJSON('../cache/analyze.json'), $.getJSON('../cache/history.json'))
+      $.when(
+        $.getJSON('../cache/analyze.json', {cache: false}),
+        $.getJSON('../cache/history.json', {cache: false}))
         .then(function (analyze, history) {
 
           drawGlobals(analyze[0]);
@@ -285,7 +296,7 @@
           + '<span>'
           ;
         columns.push({
-          data: k, 'title': title, /*type: 'num',*/ render: {
+          data: k, title: title, class: 'error', render: {
             _: 'd',
             sort: 'c'
           }
@@ -339,6 +350,7 @@
             d: '',
             c: 0,
           };
+
           if (axe['errors_ignored_count'][k]) {
             datum.c = parseInt(axe['errors_ignored_count'][k]);
             datum.d = '<span class="text-warning-emphasis">ignored: ' + datum.c + '</span>';
@@ -347,12 +359,15 @@
           }
           else if (axe['errors'][k]) {
 
-            errors_count += axe['errors'][k].length;
             datum.c += axe['errors'][k].length;
+            errors_count += datum.c;
+
+            datum.d = '<span class="text-danger">errors: ' + datum.c + '</span>';
+
             switch (k) {
+
               case 'match_rr_cner':
-                datum.d = '<span class="text-danger">errors: ' + datum.c + '</span>'
-                  + ' josm:'
+                datum.d += ' <br/>josm:'
                   + ' <a class="link" href="' + get_josm_import_link(get_rr_geojson_link(ref, true), true) + '" onclick="josmEdit(this,event)">rr simplified</a>'
                   + ' <a class="link" href="' + get_josm_import_link(get_rr_geojson_link(ref, false), true) + '" onclick="josmEdit(this,event)">rr normal</a>'
                   ;
@@ -361,31 +376,39 @@
                   if (er.startsWith('cner!=osm: ')) {
                     // cner!=osm: segment:104 position:7 point:-8.2941633952958,31.457601448568
                     const matches = er.match(/point\:([+-]?([0-9]*[.])?[0-9]+),([+-]?([0-9]*[.])?[0-9]+)$/);
-                    html += '<li>cner!=osm <a href="' + get_josm_zoom_link([parseFloat(matches[3]), parseFloat(matches[1])]) + '" onclick="josmEdit(this,event)">jsom</a></li>';
+                    html += '<li><span class="text-sm">cner!=osm</span> <a href="' + get_josm_zoom_link([parseFloat(matches[3]), parseFloat(matches[1])]) + '" onclick="josmEdit(this,event)" class="link">jsom</a></li>';
                   }
                   else if (er.startsWith('osm!=cner')) {
                     // osm!=cner: node: 6819652251 point:-7.7929705,31.5847911
                     const matches = er.match(/node\: ([0-9]+) point\:([+-]?([0-9]*[.])?[0-9]+),([+-]?([0-9]*[.])?[0-9]+)$/);
-                    html += '<li>osm!=cner <a href="' + get_josm_zoom_link([parseFloat(matches[4]), parseFloat(matches[2])]) + '" onclick="josmEdit(this,event)">jsom</a></li>';
+                    html += '<li><span class="text-sm">osm!=cner</span> <a href="' + get_josm_zoom_link([parseFloat(matches[4]), parseFloat(matches[2])]) + '" onclick="josmEdit(this,event)" class="link">jsom</a></li>';
                   }
                 });
                 datum.d += '<ul>' + html + '</ul>';
+                break;
 
-                break;
               case 'ways_not_in_relation':
-                datum.d = '<span class="text-danger">errors: ' + datum.c + '</span>';
-                //if (datum.c <= 10) {
-                  datum.d += '<br/>ways: ' + axe['errors'][k].reduce((ac, value) => {
-                    ac += value.replace('way: ', ' ');
-                    return ac;
-                  }, '');
-                //}
+                datum.d += '<br/>ways: ' + axe['errors'][k].reduce((ac, er) => {
+                  ac += er.replace('way: ', ' ');
+                  return ac;
+                }, '');
                 break;
+
+              case 'mismatch_ref':
+                // mismatch_ref way: 361924287, ref: 
+                datum.d += '<br/>ways: ' + axe['errors'][k].reduce((ac, er) => {
+                  //ac += er.replace('way: ', ' ');
+                  const matches = er.match(/way\: ([0-9]+), ref\: (.*)$/);
+                  ac += matches[1]+' ('+matches[2]+') ';
+                  return ac;
+                }, '');
+                break;
+
               default:
-                datum.d = '<span class="text-danger">errors: ' + datum.c + '</span>';
             }
 
           }
+
           row[k] = datum;
         });
 
@@ -473,7 +496,7 @@
     }
 
     function get_josm_zoom_link(point) {
-      const k = .002;
+      const k = .001;
       const bbox = [
         // left, top
         point[1] - k, point[0] + k,
