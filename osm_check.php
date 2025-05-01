@@ -291,11 +291,30 @@ function process_ref(&$row)
 
     $ref = $row[$config['axes_csv']['columns']['axe']];
 
-    $result = $common->download_osm($ref);
-    $stats['axes'][$ref]['download'] = $result;
-
-    $osm_file = $config['cacheFolder'] . '/' . $ref . '_osm.osm';
-    $xml = new SimpleXMLElement(file_get_contents($osm_file));
+    $xml = null ;
+    // Catch retry in case of response error.
+    $retry_count = 3 ;
+    $retry_sleep = 3 ;
+    for( $i=0; $i<$retry_count; $i++ )
+    {
+        $result = $common->download_osm($ref);
+        $stats['axes'][$ref]['download'] = $result;
+    
+        $osm_file = $config['cacheFolder'] . '/' . $ref . '_osm.osm';
+        $xml = new SimpleXMLElement(file_get_contents($osm_file));
+        if( $xml->getName() == 'osm')
+        {
+            // Ok, result is an OSM document
+            break;
+        }
+        echo "\t", 'Invalid OSM document, sleeping ', $retry_sleep, ' seconds before retry ...', "\n";
+        sleep($retry_sleep);
+    }
+    if( ! $xml )
+    {
+        echo Ansi::BACKGROUND_RED,Ansi::WHITE, 'ERROR, failed to download osm for ref ',$ref,Ansi::CLOSE,Ansi::EOL;
+        die();
+    }
 
     $ways_id_in_relation = [];
 
@@ -326,7 +345,7 @@ function process_ref(&$row)
         }
     } else {
         $stats['axes'][$ref]['relation'] = false;
-        add_error($ref, 'missing_relation', '');
+        add_error($ref, 'missing_relation', 'not found');
     }
 
     $nodesId = [];

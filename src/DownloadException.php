@@ -28,7 +28,7 @@ class DownloadException extends \Exception
             error:[file_get_contents(https://overpass-api.de/api/interpreter): Failed to open stream: HTTP request failed! HTTP/1.1 429 Too Many Requests]
         */
 
-        if (preg_match('{HTTP\/\S*\s(\d{3})}', $http_header[0], $match)) {
+        if (is_array($http_header) && (count($http_header)>0) && preg_match('{HTTP\/\S*\s(\d{3})}', $http_header[0], $match)) {
             $code = $match[1];
         } else {
             $code = $last_error['type'];

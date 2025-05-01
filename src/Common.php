@@ -91,7 +91,7 @@ class Common
         $retry_max = 3;
         for ($retry = 1; $retry <= $retry_max; $retry++) {
             try {
-                echo "\t", 'download (', $retry, '/', $retry_max, ') ...', "\n";
+                echo "\t", 'download (', $retry, '/', $retry_max, ') from '.$url.' ...', "\n";
                 $json = @file_get_contents($url, false, $context);
                 if ($json === false) {
                     throw new DownloadException($url, error_get_last(), $http_response_header);
