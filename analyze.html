@@ -52,7 +52,7 @@
       content: "\2212";
     }
 
-    .content {
+    .collapsible-content {
       padding: 0 18px;
       max-height: 0;
       overflow: hidden;
@@ -107,7 +107,7 @@
 
     <div>
       <button class="collapsible">Configuration</button>
-      <div class="content">
+      <div class="collapsible-content">
         <div id="overpass-instances">
           <table class="table table-sm">
             <thead>
@@ -152,9 +152,11 @@
   <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"
     integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
   <script src="https://cdn.datatables.net/2.2.2/js/dataTables.min.js"></script>
+  <!--
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/js/bootstrap.min.js"
     integrity="sha384-VQqxDN0EQCkWoxt/0vsQvZswzTHUVOImccYmSyhJTp7kGtPed0Qcx8rK9h9YEgx+"
     crossorigin="anonymous"></script>
+  -->
 
   <script>
 
@@ -166,8 +168,8 @@
     function loadResults() {
 
       $.when(
-        $.getJSON('../cache/analyze.json', {cache: false}),
-        $.getJSON('../cache/history.json', {cache: false}))
+        $.getJSON('../cache/analyze.json', { cache: false }),
+        $.getJSON('../cache/history.json', { cache: false }))
         .then(function (analyze, history) {
 
           drawGlobals(analyze[0]);
@@ -322,6 +324,14 @@
 
       });
 
+      /**
+       */
+      table.on('draw.dt', function () {
+        // activate collapsible buttons in table's cells
+        $('#results-table tbody td .collapsible').on('click', collapseHandle);
+
+      });
+
       // Add rows
       addRows(data, history);
 
@@ -384,7 +394,7 @@
                     html += '<li><span class="text-sm">osm!=cner</span> <a href="' + get_josm_zoom_link([parseFloat(matches[4]), parseFloat(matches[2])]) + '" onclick="josmEdit(this,event)" class="link">jsom</a></li>';
                   }
                 });
-                datum.d += '<ul>' + html + '</ul>';
+                datum.d += '<button class="collapsible">details</button><div class="collapsible-content"><ul>' + html + '</ul></div>';
                 break;
 
               case 'ways_not_in_relation':
@@ -399,7 +409,7 @@
                 datum.d += '<br/>ways: ' + axe['errors'][k].reduce((ac, er) => {
                   //ac += er.replace('way: ', ' ');
                   const matches = er.match(/way\: ([0-9]+), ref\: (.*)$/);
-                  ac += matches[1]+' ('+matches[2]+') ';
+                  ac += matches[1] + ' (' + matches[2] + ') ';
                   return ac;
                 }, '');
                 break;
@@ -535,15 +545,18 @@
 
       var coll = document.getElementsByClassName('collapsible');
       for (let i = 0; i < coll.length; i++) {
-        coll[i].addEventListener('click', function () {
-          this.classList.toggle('active');
-          var content = this.nextElementSibling;
-          if (content.style.maxHeight) {
-            content.style.maxHeight = null;
-          } else {
-            content.style.maxHeight = content.scrollHeight + 'px';
-          }
-        });
+        coll[i].addEventListener('click', collapseHandle
+        );
+      }
+    }
+
+    function collapseHandle() {
+      this.classList.toggle('active');
+      var content = this.nextElementSibling;
+      if (content.style.maxHeight) {
+        content.style.maxHeight = null;
+      } else {
+        content.style.maxHeight = content.scrollHeight + 'px';
       }
     }
 
