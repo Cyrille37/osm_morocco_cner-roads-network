@@ -373,7 +373,7 @@
             errors_count += datum.c;
 
             datum.d = '<span class="text-danger">errors: ' + datum.c + '</span>';
-
+            let html ;
             switch (k) {
 
               case 'match_rr_cner':
@@ -381,7 +381,7 @@
                   + ' <a class="link" href="' + get_josm_import_link(get_rr_geojson_link(ref, true), true) + '" onclick="josmEdit(this,event)">rr simplified</a>'
                   + ' <a class="link" href="' + get_josm_import_link(get_rr_geojson_link(ref, false), true) + '" onclick="josmEdit(this,event)">rr normal</a>'
                   ;
-                let html = '';
+                html = '';
                 axe['errors'][k].forEach((er, idx) => {
                   if (er.startsWith('cner!=osm: ')) {
                     // cner!=osm: segment:104 position:7 point:-8.2941633952958,31.457601448568
@@ -398,10 +398,14 @@
                 break;
 
               case 'ways_not_in_relation':
-                datum.d += '<br/>ways: ' + axe['errors'][k].reduce((ac, er) => {
-                  ac += er.replace('way: ', ' ');
+                html = '';
+                 axe['errors'][k].reduce((ac, er) => {
+                  //ac += er.replace('way: ', ' ');
+                  const id = er.replace('way: ', '');
+                  html += ' <a href="' + get_josm_zoom_link(null, 'way',id) + '" onclick="josmEdit(this,event)" class="link">'+id+'</a>';
                   return ac;
                 }, '');
+                datum.d += '<button class="collapsible">details</button><div class="collapsible-content">ways: ' + html + '</div>';
                 break;
 
               case 'mismatch_ref':
@@ -494,6 +498,9 @@
       return 'https://overpass-turbo.eu/?Q=' + encodeURI(get_overpass_query(ref));
     }
 
+    /**
+     * https://josm.openstreetmap.de/wiki/Help/RemoteControlCommands#import
+     */
     function get_josm_import_link(importUrl, locked) {
       const link = 'http://127.0.0.1:8111/import'
         + '?new_layer=true'
@@ -505,23 +512,42 @@
       return link;
     }
 
-    function get_josm_zoom_link(point) {
+    /**
+     * https://josm.openstreetmap.de/wiki/Help/RemoteControlCommands#zoom
+     * https://josm.openstreetmap.de/wiki/Help/RemoteControlCommands#load_and_zoom
+     */
+    function get_josm_zoom_link(point, selectType, selectId) {
+
       const k = .001;
+
+      if( point == null )
+      {
+        point= [27.88,-7.98];
+      }
       const bbox = [
         // left, top
         point[1] - k, point[0] + k,
         // right, bottom
         point[1] + k, point[0] - k,
       ];
-      const link = 'http://127.0.0.1:8111/zoom'
+
+      let link = 'http://127.0.0.1:8111/zoom'
         + '?'
         + 'left=' + bbox[0] + '&right=' + bbox[2] + '&top=' + bbox[1] + '&bottom=' + bbox[3]
         ;
+      if( selectType && selectType )
+      {
+        link += '&select='+selectType+selectId;
+      }
       return link;
     }
 
+    /**
+     * Create a iframe to avoir the "OK" blank page.
+     */
     function josmEdit(sender, e) {
 
+      const failedTimeout = 5 * 1000;
       e.preventDefault();
       const url = $(e.currentTarget).attr('href');
 
@@ -529,8 +555,7 @@
       const timeoutId = setTimeout(function () {
         alert('Cannot open data in Josm. Check that Josm is running with remote control enabled.');
         iframe.remove();
-      }, 3000);
-
+      }, failedTimeout);
       iframe
         .hide()
         .appendTo('body')
