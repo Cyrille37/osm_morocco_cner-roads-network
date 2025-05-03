@@ -16,6 +16,7 @@ class Ansi
 	 * Clear all ANSI styling
 	 */
 	public const CLOSE = self::ESC . "[0m";
+	public const CLOSE_AND_EOL = self::ESC . "[0m".self::EOL;
 
 	/**
 	 * Text colours

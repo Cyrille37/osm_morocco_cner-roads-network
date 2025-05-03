@@ -150,12 +150,10 @@ while ($row = fgetcsv($axesFile)) {
         process_ref($row);
         $historyFile->update($ref, count($stats['axes'][$ref]['errors']) > 0 ? true : false);
         $stats['processed_count']++;
-    }
-    else
-    {
+    } else {
         echo 'Skip ', $ref, Ansi::EOL;
         $stats['axes'][$ref]['start_at'] = $historyFile->getOkAt($ref);
-        $stats['skipped_count'] ++ ;
+        $stats['skipped_count']++;
     }
 
     // Periodically save $stats in a file.
@@ -177,6 +175,8 @@ file_put_contents($resultFile, json_encode($stats));
 unset($stats['config']);
 unset($stats['axes']);
 echo 'Stats: ', print_r($stats, true), "\n";
+
+echo Ansi::BACKGROUND_GREEN, Ansi::BOLD, Ansi::WHITE, 'Done ', date_format(new DateTime('now', new DateTimeZone('Europe/Paris')), \DateTimeInterface::RFC2822), Ansi::CLOSE_AND_EOL;
 
 //if ($stats['processed_count'] == 0)
 //    echo Ansi::BACKGROUND_BLACK, Ansi::YELLOW, 'Nothing processed, check "--process_only" and/or "config.process_only".', Ansi::CLOSE, Ansi::EOL;
@@ -291,28 +291,25 @@ function process_ref(&$row)
 
     $ref = $row[$config['axes_csv']['columns']['axe']];
 
-    $xml = null ;
+    $xml = null;
     // Catch retry in case of response error.
-    $retry_count = 3 ;
-    $retry_sleep = 3 ;
-    for( $i=0; $i<$retry_count; $i++ )
-    {
+    $retry_count = 3;
+    $retry_sleep = 3;
+    for ($i = 0; $i < $retry_count; $i++) {
         $result = $common->download_osm($ref);
         $stats['axes'][$ref]['download'] = $result;
-    
+
         $osm_file = $config['cacheFolder'] . '/' . $ref . '_osm.osm';
         $xml = new SimpleXMLElement(file_get_contents($osm_file));
-        if( $xml->getName() == 'osm')
-        {
+        if ($xml->getName() == 'osm') {
             // Ok, result is an OSM document
             break;
         }
         echo "\t", 'Invalid OSM document, sleeping ', $retry_sleep, ' seconds before retry ...', "\n";
         sleep($retry_sleep);
     }
-    if( ! $xml )
-    {
-        echo Ansi::BACKGROUND_RED,Ansi::WHITE, 'ERROR, failed to download osm for ref ',$ref,Ansi::CLOSE,Ansi::EOL;
+    if (! $xml) {
+        echo Ansi::BACKGROUND_RED, Ansi::WHITE, 'ERROR, failed to download osm for ref ', $ref, Ansi::CLOSE, Ansi::EOL;
         die();
     }
 
@@ -493,7 +490,7 @@ function compare_with_rr_cner($ref, $xmlWays)
             }
 
             // Don't check RR in OSM if "etat=-1"
-            if ( ! in_array($rr_etat, [null, '-1']) ) {
+            if (! in_array($rr_etat, [null, '-1'])) {
                 $isInside = false;
                 foreach ($rectangles_osm as $rect) {
                     $isInside = GeometryTools::isPointInPolygon($point, $rect);
@@ -501,7 +498,7 @@ function compare_with_rr_cner($ref, $xmlWays)
                         break;
                 }
                 if (! $isInside) {
-                    add_error($ref, 'match_rr_cner', 'cner!=osm: segment:' . $coordsCount . ' position:' . $i.' point:'.$coord[0].','.$coord[1]);
+                    add_error($ref, 'match_rr_cner', 'cner!=osm: segment:' . $coordsCount . ' position:' . $i . ' point:' . $coord[0] . ',' . $coord[1]);
                     $cnerMatchWays = false;
                 }
             }
@@ -534,7 +531,7 @@ function compare_with_rr_cner($ref, $xmlWays)
                     break;
             }
             if (! $isInside) {
-                add_error($ref, 'match_rr_cner', 'osm!=cner: node: ' . $nodeId.' point:'.$lon1.','.$lat1);
+                add_error($ref, 'match_rr_cner', 'osm!=cner: node: ' . $nodeId . ' point:' . $lon1 . ',' . $lat1);
                 $wayMatchCNER = false;
             }
         }
