@@ -75,6 +75,10 @@
 
     #results-table tbody td.error ul {
       padding-left: 0;
+    }
+
+    #results-table tbody td.error .collapsible {
+      padding: 0 .5rem;
 
     }
 
@@ -373,7 +377,7 @@
             errors_count += datum.c;
 
             datum.d = '<span class="text-danger">errors: ' + datum.c + '</span>';
-            let html ;
+            let html;
             switch (k) {
 
               case 'match_rr_cner':
@@ -398,11 +402,10 @@
                 break;
 
               case 'ways_not_in_relation':
-                html = '';
-                 axe['errors'][k].reduce((ac, er) => {
+                html = axe['errors'][k].reduce((ac, er) => {
                   //ac += er.replace('way: ', ' ');
                   const id = er.replace('way: ', '');
-                  html += ' <a href="' + get_josm_zoom_link(null, 'way',id) + '" onclick="josmEdit(this,event)" class="link">'+id+'</a>';
+                  ac += ' <a href="' + get_josm_zoom_link(null, 'way', id) + '" onclick="josmEdit(this,event)" class="link">' + id + '</a>';
                   return ac;
                 }, '');
                 datum.d += '<button class="collapsible">details</button><div class="collapsible-content">ways: ' + html + '</div>';
@@ -410,12 +413,14 @@
 
               case 'mismatch_ref':
                 // mismatch_ref way: 361924287, ref: 
-                datum.d += '<br/>ways: ' + axe['errors'][k].reduce((ac, er) => {
+                html = axe['errors'][k].reduce((ac, er) => {
                   //ac += er.replace('way: ', ' ');
                   const matches = er.match(/way\: ([0-9]+), ref\: (.*)$/);
-                  ac += matches[1] + ' (' + matches[2] + ') ';
+                  const id = matches[1], ref = matches[2];
+                  ac += ' <a href="' + get_josm_zoom_link(null, 'way', id) + '" onclick="josmEdit(this,event)" class="link">' + id + ' (' + ref + ')' + '</a>';
                   return ac;
                 }, '');
+                datum.d += '<button class="collapsible">details</button><div class="collapsible-content">ways: ' + html + '</div>';
                 break;
 
               default:
@@ -520,9 +525,8 @@
 
       const k = .001;
 
-      if( point == null )
-      {
-        point= [27.88,-7.98];
+      if (point == null) {
+        point = [27.88, -7.98];
       }
       const bbox = [
         // left, top
@@ -535,9 +539,8 @@
         + '?'
         + 'left=' + bbox[0] + '&right=' + bbox[2] + '&top=' + bbox[1] + '&bottom=' + bbox[3]
         ;
-      if( selectType && selectType )
-      {
-        link += '&select='+selectType+selectId;
+      if (selectType && selectType) {
+        link += '&select=' + selectType + selectId;
       }
       return link;
     }
