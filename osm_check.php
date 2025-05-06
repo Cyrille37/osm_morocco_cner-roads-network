@@ -294,7 +294,7 @@ function process_ref(&$row)
     $xml = null;
     // Catch retry in case of response error.
     $retry_count = 3;
-    $retry_sleep = 3;
+    $retry_sleep = 10;
     for ($i = 0; $i < $retry_count; $i++) {
         $result = $common->download_osm($ref);
         $stats['axes'][$ref]['download'] = $result;
@@ -337,7 +337,8 @@ function process_ref(&$row)
         foreach ($rel->member as $member) {
             if ($member['type'] != 'way')
                 continue;
-            $stats['axes'][$ref]['ways']++;
+            /** @disregard P1006 */
+            $stats['axes'][$ref]['ways'] ++;
             $ways_id_in_relation[] = (string) $member['ref'];
         }
     } else {
@@ -362,6 +363,7 @@ function process_ref(&$row)
         }
         // Assert way is in relation
         if (! in_array($wayId, $ways_id_in_relation)) {
+            /** @disregard P1006 */
             $stats['axes'][$ref]['ways']++;
             add_error($ref, 'ways_not_in_relation', 'way: ' . $wayId);
         }

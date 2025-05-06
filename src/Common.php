@@ -89,6 +89,7 @@ class Common
         ]);
 
         $retry_max = 3;
+        $retry_sleep = 10;
         for ($retry = 1; $retry <= $retry_max; $retry++) {
             try {
                 echo "\t", 'download (', $retry, '/', $retry_max, ') from '.$url.' ...', "\n";
@@ -102,8 +103,8 @@ class Common
                 if ($retry == $retry_max) {
                     die('Too many retries, exiting' . "\n");
                 }
-                echo Ansi::TAB,  'Retrying ...', "\n";
-                sleep(5);
+                echo Ansi::TAB,  'Retrying after sleeping ', $retry_sleep,' seconds...', "\n";
+                sleep($retry_sleep);
             }
         }
 
