@@ -607,7 +607,7 @@ function process_old_axes()
 
     // Not usable
     //$axes_diff = array_diff( array_keys($axesActuals), array_keys($axesObsoletes) );
-    echo Ansi::BACKGROUND_BLACK, Ansi::YELLOW, 'Obsoletes Axes:', Ansi::CLOSE, Ansi::EOL;
+    echo Ansi::BACKGROUND_BLACK, Ansi::YELLOW, 'Obsolete axes:', Ansi::CLOSE, Ansi::EOL;
     foreach ($axesObsoletes as $old_ref => $v) {
         if (in_array($old_ref, ['NC', '']))
             continue;

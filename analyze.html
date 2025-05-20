@@ -123,7 +123,7 @@
       <button class="collapsible">Configuration</button>
       <div class="collapsible-content">
         <div id="overpass-instances">
-          <table class="table table-sm">
+          <table class="table table-sm table-hover">
             <thead>
               <tr>
                 <th>Overpass instances:</th>
@@ -133,7 +133,7 @@
           </table>
         </div>
         <div id="ignored-errors">
-          <table class="table table-sm">
+          <table class="table table-sm table-hover">
             <thead>
               <tr>
                 <th>ignored error</th>
@@ -144,7 +144,7 @@
           </table>
         </div>
         <div id="other-configs">
-          <table class="table table-sm">
+          <table class="table table-sm table-hover">
             <thead>
               <tr>
                 <th>other config</th>
@@ -158,10 +158,10 @@
     </div>
 
     <div id="obsolete-axes">
-      <button class="collapsible">Obsolete axes</button>
+      <button class="collapsible">Obsolete Axes</button>
       <div class="collapsible-content">
         <div>
-          <table class="table table-sm">
+          <table class="table table-sm table-striped table-hover">
             <thead>
               <tr>
                 <th>Axe</th>
@@ -176,7 +176,8 @@
     </div>
 
     <div>
-      <table id="results-table" class="table">
+      <h3 class="h3">Actual checked axes</h3>
+      <table id="results-table" class="table table-hover">
       </table>
     </div>
   </section>
@@ -300,8 +301,14 @@
 
         $('<tr>'
           + '<td>'
-          + '<span class="fw-bold">' + k + '</span>'
-          + ' <a class="link" href="' + get_josm_import_link(get_overpass_link(k)) + '" onclick="josmEdit(this,event)">josm</a>'
+          + ( d['deleted']
+            ? '<span class="">' + k + '</span>'
+            : '<span class="fw-bold">' + k + '</span>'
+          )
+          + (d['deleted']
+            ? ''
+            : ' <a class="link" href="' + get_josm_import_link(get_overpass_link(k)) + '" onclick="josmEdit(this,event)">josm</a>'
+          )
           + '</td>'
           + '<td>'
           + new Date(d['start_at'] * 1000).toLocaleString()
