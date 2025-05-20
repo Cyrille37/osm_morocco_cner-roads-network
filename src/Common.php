@@ -35,15 +35,17 @@ class Common
 
     public static function get_overpass_query(string $ref): string
     {
-        // must use "out meta" to permits opening in Josm.
+        // - must use "out meta" to permits opening in Josm.
+        // - add "name" key and eventual space in ref because some contributors have duplicated "ref" in "name" and possible use "RP 123" in name.
+
         $query = '
             [out:xml] [timeout:30];
             // Maroc "wikidata"="Q1028"
             area[admin_level=2]["wikidata"="Q1028"]->.country;
             (
-                rel[ref~"(^|;)(R)?' . $ref . '($|;)"](area.country);
+                rel["type"="route"]["route"="road"][~"^ref|name$"~"(^|;)(R)?(\s)?' . $ref . '($|;)"](area.country);
                 >>;
-                way[ref~"(^|;)(R)?' . $ref . '($|;)"](area.country);
+                way["highway"][~"^ref|name$"~"(^|;)(R)?(\s)?' . $ref . '($|;)"](area.country);
                 >;
             );
             out meta;
