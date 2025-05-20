@@ -91,7 +91,7 @@
     #results-table thead .dt-column-title {
       font-size: .9em;
     }
-  
+
     #results-table thead .error-counts {
       font-weight: normal;
       font-size: 85%;
@@ -157,6 +157,24 @@
       </div>
     </div>
 
+    <div id="obsolete-axes">
+      <button class="collapsible">Obsolete axes</button>
+      <div class="collapsible-content">
+        <div>
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th>Axe</th>
+                <th>Check time</th>
+                <th>Deleted</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <div>
       <table id="results-table" class="table">
       </table>
@@ -188,6 +206,7 @@
 
           drawGlobals(analyze[0]);
           drawTable(analyze[0], history[0]);
+          drawObsoleteAxes(analyze[0], history[0]);
 
         }, () => {
           console.error('Loading data failed');
@@ -202,7 +221,11 @@
 
       // Global
 
-      ['total_count', 'processed_count', 'skipped_count', 'relations_count', 'ways_count', 'errors_effective_counts', 'errors_ignored_counts', 'download_count', 'download_bytes']
+      [
+        'total_count', 'processed_count', 'skipped_count', 'relations_count', 'ways_count',
+        'errors_effective_counts', 'errors_ignored_counts', 'errors_still_exists_count',
+        'download_count', 'download_bytes'
+      ]
         .forEach((key, idx) => {
           const $t = $rgTemplate.clone().contents();
           switch (key) {
@@ -260,6 +283,40 @@
         + '</td></tr>').appendTo($bloc);
 
 
+    }
+
+    function drawObsoleteAxes(data, history) {
+
+      $bloc = $('#obsolete-axes table tbody');
+      $bloc.empty();
+      let hasErrors = false;
+      Object.keys(data['old_axes']).forEach((k, idx) => {
+
+        const d = data['old_axes'][k];
+        //console.debug( k, d, history[k]);
+
+        if (!d['deleted'])
+          hasErrors = true;
+
+        $('<tr>'
+          + '<td>'
+          + '<span class="fw-bold">' + k + '</span>'
+          + ' <a class="link" href="' + get_josm_import_link(get_overpass_link(k)) + '" onclick="josmEdit(this,event)">josm</a>'
+          + '</td>'
+          + '<td>'
+          + new Date(d['start_at'] * 1000).toLocaleString()
+          + '</td>'
+          + '<td>' + (
+            d['deleted']
+              ? '<span class="badge rounded-pill text-bg-success">Ok</span>'
+              : '<span class="badge rounded-pill text-bg-danger">Still exists</span>'
+          ) + '</td>'
+          + '</tr>').appendTo($bloc);
+      });
+      if (hasErrors) {
+        //$('#obsolete-axes button.collapsible').addClass('active');
+        $('#obsolete-axes button.collapsible').trigger('click');
+      }
     }
 
     /**

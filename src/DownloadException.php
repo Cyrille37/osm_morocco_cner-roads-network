@@ -4,7 +4,7 @@ namespace Cyrille\RrInspect;
 
 class DownloadException extends \Exception
 {
-    public function __construct($url, array $last_error, array $http_header)
+    public function __construct($url, array $last_error, ?array $http_header=null)
     {
         /*
         $last_error : Array (

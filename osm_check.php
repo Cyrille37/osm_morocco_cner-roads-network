@@ -82,14 +82,20 @@ $stats = [
     'relations_count' => 0,
     'errors_effective_counts' => [],
     'errors_ignored_counts' => [],
+    'errors_still_exists_count' => 0,
     'resultFile' => $resultFile,
     'axes' => [],
+    'old_axes' => [],
     'config' => $config,
 ];
 
 $common = new Common($config, $stats);
 
 $historyFile = new HistoryFile($config['history']);
+
+$axesFile = fopen($config['axes_csv']['file'], 'r');
+
+// Handle Ctrl+C
 
 pcntl_async_signals(TRUE);
 pcntl_signal(SIGINT, 'pcntl_signal_handler');
@@ -103,7 +109,12 @@ function pcntl_signal_handler(int $signo, mixed $siginfo): void
     die();
 }
 
-$axesFile = fopen($config['axes_csv']['file'], 'r');
+// Read axes file
+
+// Get current axes to find no more existing old_axe.
+$axesActuals = [];
+$axesObsoletes = [];
+
 $headers = $row = fgetcsv($axesFile);
 while ($row = fgetcsv($axesFile)) {
 
@@ -113,6 +124,10 @@ while ($row = fgetcsv($axesFile)) {
         echo 'Invalid ref:[' . $ref . '], check column "axe"', "\n";
         exit();
     }
+
+    $axesActuals[$ref] = true;
+    $ref_old = $row[$config['axes_csv']['columns']['axe_old']];
+    $axesObsoletes[$ref_old] = $axesObsoletes[$ref_old] ?? 0 + 1;
 
     /*
     Process row if:
@@ -166,6 +181,8 @@ while ($row = fgetcsv($axesFile)) {
 }
 fclose($axesFile);
 
+process_old_axes();
+
 $historyFile->save();
 
 $stats['end_at'] = time();
@@ -174,6 +191,7 @@ file_put_contents($resultFile, json_encode($stats));
 
 unset($stats['config']);
 unset($stats['axes']);
+unset($stats['old_axes']);
 echo 'Stats: ', print_r($stats, true), "\n";
 
 echo Ansi::BACKGROUND_GREEN, Ansi::BOLD, Ansi::WHITE, 'Done ', date_format(new DateTime('now', new DateTimeZone('Europe/Paris')), \DateTimeInterface::RFC2822), Ansi::CLOSE_AND_EOL;
@@ -338,7 +356,7 @@ function process_ref(&$row)
             if ($member['type'] != 'way')
                 continue;
             /** @disregard P1006 */
-            $stats['axes'][$ref]['ways'] ++;
+            $stats['axes'][$ref]['ways']++;
             $ways_id_in_relation[] = (string) $member['ref'];
         }
     } else {
@@ -581,4 +599,57 @@ function getRrGeojson($ref): FeatureCollection
         $featureCollection = GeoJson::jsonUnserialize($json);
     }
     return $featureCollection;
+}
+
+function process_old_axes()
+{
+    global $axesActuals, $axesObsoletes, $common, $config, $historyFile, $stats;
+
+    // Not usable
+    //$axes_diff = array_diff( array_keys($axesActuals), array_keys($axesObsoletes) );
+    echo Ansi::BACKGROUND_BLACK, Ansi::YELLOW, 'Obsoletes Axes:', Ansi::CLOSE, Ansi::EOL;
+    foreach ($axesObsoletes as $old_ref => $v) {
+        if (in_array($old_ref, ['NC', '']))
+            continue;
+        if (isset($axesActuals[$old_ref]))
+            continue;
+
+        $stats['old_axes'][$old_ref] = [
+            'start_at' => time(),
+            'deleted' => null,
+            'download' => null,
+        ];
+
+        if ($historyFile->needUpdate($old_ref, $stats['start_at']) || (! file_exists($common->osm_filename($old_ref)))) {
+
+            echo Ansi::TAB, Ansi::BOLD, 'Checking ', $old_ref, Ansi::CLOSE, Ansi::EOL;
+            $result = $common->download_osm($old_ref);
+            $stats['old_axes'][$old_ref]['download'] = $result;
+
+            $osm_file = $config['cacheFolder'] . '/' . $old_ref . '_osm.osm';
+            $xml = new SimpleXMLElement(file_get_contents($osm_file));
+            if ($xml->getName() != 'osm') {
+                die('not an OSM file' . "\n");
+            }
+            // at least 2 elements: "note" and "meta"
+            if ($xml->count() > 2) {
+                echo Ansi::TAB, Ansi::BACKGROUND_RED, Ansi::WHITE, 'Still exists', Ansi::CLOSE, Ansi::EOL;
+                $stats['old_axes'][$old_ref]['deleted'] = false;
+                $historyFile->update($old_ref, true);
+                $stats['errors_still_exists_count']++;
+            } else {
+                $stats['old_axes'][$old_ref]['deleted'] = true;
+                $historyFile->update($old_ref, false);
+            }
+        } else {
+            echo Ansi::TAB, 'Skip ', $old_ref, Ansi::EOL;
+            $stats['old_axes'][$old_ref]['start_at'] = $historyFile->getOkAt($old_ref);
+            $stats['old_axes'][$old_ref]['deleted'] =
+                $historyFile->getErrorAt($old_ref) > 0 && $historyFile->getErrorAt($old_ref) > $historyFile->getOkAt($old_ref)
+                ? false
+                : true;
+        }
+    }
+
+    ksort($stats['old_axes']);
 }
