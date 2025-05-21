@@ -441,7 +441,10 @@
 
           if (axe['errors_ignored_count'][k]) {
             datum.c = parseInt(axe['errors_ignored_count'][k]);
-            datum.d = '<span class="text-warning-emphasis">ignored: ' + datum.c + '</span>';
+            if( datum.c == 1 )
+              datum.d = '<span class="text-warning-emphasis">ignored</span>';
+            else
+              datum.d = '<span class="text-warning-emphasis">ignored: ' + datum.c + '</span>';
             // Don't take ignored errors for "has_errors" column
             //errors_count += axe['errors_ignored_count'][k];
           }
