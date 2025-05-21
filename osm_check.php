@@ -251,6 +251,19 @@ function readOptions()
     }
 }
 
+function is_error_ignored($ref, $type): bool
+{
+    global $config;
+    if (isset($config['errors']['ignore_types'][$type])) {
+        $rule = $config['errors']['ignore_types'][$type];
+        if (! is_array($rule))
+            return true;
+        else if (in_array($ref, $rule))
+            return true;
+    }
+    return false;
+}
+
 function add_error($ref, $type, $err)
 {
     global $config, $stats, $common;
@@ -266,14 +279,15 @@ function add_error($ref, $type, $err)
         }
     }
 
-    $skip = false;
+    $skip = is_error_ignored($ref, $type);
+    /*
     if (isset($config['errors']['ignore_types'][$type])) {
         $rule = $config['errors']['ignore_types'][$type];
         if (! is_array($rule))
             $skip = true;
         else if (in_array($ref, $rule))
             $skip = true;
-    }
+    }*/
 
     if ($skip) {
         $stats['errors_ignored_counts'][$type]++;
@@ -373,7 +387,7 @@ function process_ref(&$row)
         // Assert ref start with 'R'
         $wayRef = Common::osm_object_get_tag($way, 'ref');
         if (! $wayRef || ! preg_match('#(?:^|;)R' . $ref . '(?:$|;)#', $wayRef)) {
-            add_error($ref, 'mismatch_ref', 'way: ' . $wayId . ', ref: ' . $wayRef);
+            add_error($ref, 'mismatch_ref', 'way: ' . $wayId . ' ref: ' . $wayRef);
         }
         // Assert way has tag "surface" if it's not a "track"
         if (! Common::osm_object_has_tag($way, 'highway', 'track') && ! Common::osm_object_has_tag($way, 'surface')) {
@@ -419,12 +433,17 @@ function process_ref(&$row)
         }
     }
 
-    list($cnerMatchWays, $wayMatchCNER) = compare_with_rr_cner($ref, $xml->way);
-    if (! $cnerMatchWays) {
-        add_error($ref, 'match_rr_cner', 'cner dont match osm');
-    }
-    if (! $wayMatchCNER) {
-        add_error($ref, 'match_rr_cner', 'osm dont match cner');
+    // For long route like RR & RN do not make the check if is ignored.
+    if (is_error_ignored($ref, 'match_rr_cner')) {
+        add_error($ref, 'match_rr_cner', 'ignore compare_with_rr_cner');
+    } else {
+        list($cnerMatchWays, $wayMatchCNER) = compare_with_rr_cner($ref, $xml->way);
+        if (! $cnerMatchWays) {
+            add_error($ref, 'match_rr_cner', 'cner dont match osm');
+        }
+        if (! $wayMatchCNER) {
+            add_error($ref, 'match_rr_cner', 'osm dont match cner');
+        }
     }
 }
 
