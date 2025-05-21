@@ -545,12 +545,12 @@
     }
 
     function get_overpass_query(ref) {
-      let q = `[out:xml] [timeout:30];
+      let q = `[out:xml] [timeout:60];
             area[admin_level=2]["wikidata"="Q1028"]->.country;
             (
-                rel[ref~"(^|;)(R)?${ref}($|;)"](area.country);
+                rel[~"^ref|name$"~"(^|;)(R)?(\s)?${ref}($|;)"](area.country);
                 >>;
-                way[ref~"(^|;)(R)?${ref}($|;)"](area.country);
+                way[~"^ref|name$"~"(^|;)(R)?(\s)?${ref}($|;)"](area.country);
                 >;
             );
             out meta;
