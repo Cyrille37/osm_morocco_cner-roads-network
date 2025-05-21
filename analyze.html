@@ -489,7 +489,7 @@
                 // mismatch_ref way: 361924287, ref: 
                 html = axe['errors'][k].reduce((ac, er) => {
                   //ac += er.replace('way: ', ' ');
-                  const matches = er.match(/way\: ([0-9]+), ref\: (.*)$/);
+                  const matches = er.match(/way\: ([0-9]+) ref\: (.*)$/);
                   const id = matches[1], ref = matches[2];
                   ac += ' <a href="' + get_josm_zoom_link(null, 'way', id) + '" onclick="josmEdit(this,event)" class="link">' + id + ' (' + ref + ')' + '</a>';
                   return ac;
