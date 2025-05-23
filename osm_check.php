@@ -618,6 +618,8 @@ function getRrGeojson($ref): FeatureCollection
 }
 
 /**
+ * @todo: no need to store REF in history.
+ * 
  * @return void 
  */
 function process_old_axes()
