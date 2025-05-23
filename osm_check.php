@@ -129,7 +129,7 @@ while ($row = fgetcsv($axesFile)) {
     /*
     Process row if:
         - in process_only
-        - or column "done" != -1 or != ''
+        - or column "done" != -1 and != ''
     */
 
     if (isset($config['process_only']) && (count($config['process_only']) > 0)) {
@@ -137,7 +137,7 @@ while ($row = fgetcsv($axesFile)) {
             continue;
     } else {
         $stateDone = $row[$config['axes_csv']['columns']['done']];
-        if ($stateDone == '' || $stateDone == '-1') {
+        if ( in_array($stateDone, ['','-1']) ) {
             continue;
         }
     }
