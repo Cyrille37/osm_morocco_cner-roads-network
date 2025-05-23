@@ -618,103 +618,79 @@ function getRrGeojson($ref): FeatureCollection
 }
 
 /**
- * @todo: no need to store REF in history.
- * 
  * @return void 
  */
 function process_old_axes()
 {
     global $axesActuals, $common, $config, $historyFile, $stats;
 
-    echo Ansi::BACKGROUND_BLACK, Ansi::YELLOW, 'Obsolete axes:', Ansi::CLOSE, Ansi::EOL;
-
-    $axesObsoletes = [];
-
     // column "axe_old" is not enough to find obsolete refs, so download all roads ref.
     $specialRef = 'all_highways_refs';
     $osm_file = $common->osm_filename($specialRef);
-    if ($historyFile->needUpdate($specialRef, $stats['start_at']) || (! file_exists($osm_file))) {
-        $result = $common->download_osm('all_highways_refs', '
+    if (! $historyFile->needUpdate($specialRef, $stats['start_at']) &&  file_exists($osm_file)) {
+        echo Ansi::BACKGROUND_BLACK, Ansi::YELLOW, 'Skip obsolete axes check.', Ansi::CLOSE, Ansi::EOL;
+        return;
+    }
+
+    echo Ansi::BACKGROUND_BLACK, Ansi::YELLOW, 'Obsolete axes:', Ansi::CLOSE, Ansi::EOL;
+    $result = $common->download_osm('all_highways_refs', '
             [out:xml] [timeout:30];
             area[admin_level=2]["wikidata"="Q1028"]->.country;
             (
+                rel["type"="route"]["route"="road"]["ref"~"(^|;)(R)?(N|P|R)[0-9]+($|;)"](area.country);
                 way["highway"]["ref"~"(^|;)(R)?(N|P|R)[0-9]+($|;)"](area.country);
             );
             out tags;
             ');
-        $historyFile->update($specialRef, false);
-    }
+    $historyFile->update($specialRef, false);
+
     $xml = new SimpleXMLElement(file_get_contents($osm_file));
     if ($xml->getName() != 'osm') {
         die('not an OSM file' . "\n");
     }
+
+    $axesObsoletes = [];
     foreach ($xml->way as $way) {
         $wayRefs = Common::osm_object_get_tag($way, 'ref');
         foreach (explode(';', $wayRefs) as $wayRef) {
             // remove 'R' prefix
-            if (! preg_match('/^(?:R)?([NPR]\d+)$/', $wayRef, $m))
-            {
+            if (! preg_match('/^(?:R)?([NPR]\d+)$/', $wayRef, $m)) {
                 //die('process_old_axes() -> Ref dont match: "' . $wayRef . '"');
-                echo Ansi::TAB,Ansi::BACKGROUND_BLUE,Ansi::WHITE,'skip ref ',$wayRef,Ansi::CLOSE,Ansi::EOL;
-                continue ;
+                echo Ansi::TAB, Ansi::BACKGROUND_BLUE, Ansi::WHITE, 'skip ref ', $wayRef, Ansi::CLOSE, Ansi::EOL;
+                continue;
+            }
+            $axesObsoletes[$m[1]] = true;
+        }
+    }
+    foreach ($xml->relation as $rel) {
+        $relRefs = Common::osm_object_get_tag($rel, 'ref');
+        foreach (explode(';', $relRefs) as $relRef) {
+            // remove 'R' prefix
+            if (! preg_match('/^(?:R)?([NPR]\d+)$/', $relRef, $m)) {
+                //die('process_old_axes() -> Ref dont match: "' . $wayRef . '"');
+                echo Ansi::TAB, Ansi::BACKGROUND_BLUE, Ansi::WHITE, 'skip ref ', $relRef, Ansi::CLOSE, Ansi::EOL;
+                continue;
             }
             $axesObsoletes[$m[1]] = true;
         }
     }
     if (empty($axesObsoletes)) {
-        die('No obsolete axe found.');
+        echo Ansi::BACKGROUND_BLACK, Ansi::GREEN, 'No obsolete axe found.', Ansi::CLOSE, Ansi::EOL;
+        return ;
     }
 
-    // Not usable
-    //$axes_diff = array_diff( array_keys($axesActuals), array_keys($axesObsoletes) );
     foreach ($axesObsoletes as $old_ref => $v) {
-        if (in_array($old_ref, ['NC', '']))
-            continue;
         if (isset($axesActuals[$old_ref]))
             continue;
 
+        echo Ansi::TAB, Ansi::BACKGROUND_RED, Ansi::WHITE,$old_ref, ' still exists', Ansi::CLOSE, Ansi::EOL;
+        $stats['errors_still_exists_count']++;
         $stats['old_axes'][$old_ref] = [
             'start_at' => time(),
-            'deleted' => null,
+            'deleted' => false,
             'download' => null,
         ];
-
-        if ($historyFile->needUpdate($old_ref, $stats['start_at']) || (! file_exists($common->osm_filename($old_ref)))) {
-
-            echo Ansi::TAB, Ansi::BOLD, 'Checking ', $old_ref, Ansi::CLOSE, Ansi::EOL;
-            $result = $common->download_osm($old_ref,'
-                [out:xml] [timeout:30];
-                area[admin_level=2]["wikidata"="Q1028"]->.country;
-                (
-                    way["highway"]["ref"~"(^|;)(R)?'.$old_ref.'($|;)"](area.country);
-                );
-                out tags;
-                ');
-            $stats['old_axes'][$old_ref]['download'] = $result;
-
-            $osm_file = $common->osm_filename($old_ref);
-            $xml = new SimpleXMLElement(file_get_contents($osm_file));
-            if ($xml->getName() != 'osm') {
-                die('not an OSM file' . "\n");
-            }
-            // at least 2 elements: "note" and "meta"
-            if ($xml->count() > 2) {
-                echo Ansi::TAB, Ansi::BACKGROUND_RED, Ansi::WHITE, 'Still exists', Ansi::CLOSE, Ansi::EOL;
-                $stats['old_axes'][$old_ref]['deleted'] = false;
-                $historyFile->update($old_ref, true);
-                $stats['errors_still_exists_count']++;
-            } else {
-                $stats['old_axes'][$old_ref]['deleted'] = true;
-                $historyFile->update($old_ref, false);
-            }
-        } else {
-            echo Ansi::TAB, 'Skip ', $old_ref, Ansi::EOL;
-            $stats['old_axes'][$old_ref]['start_at'] = $historyFile->getOkAt($old_ref);
-            $stats['old_axes'][$old_ref]['deleted'] =
-                $historyFile->getErrorAt($old_ref) > 0 && $historyFile->getErrorAt($old_ref) > $historyFile->getOkAt($old_ref)
-                ? false
-                : true;
-        }
+        $historyFile->update($old_ref, true);
     }
 
     ksort($stats['old_axes']);
