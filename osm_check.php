@@ -113,7 +113,6 @@ function pcntl_signal_handler(int $signo, mixed $siginfo): void
 
 // Get current axes to find no more existing old_axe.
 $axesActuals = [];
-$axesObsoletes = [];
 
 $headers = $row = fgetcsv($axesFile);
 while ($row = fgetcsv($axesFile)) {
@@ -126,8 +125,6 @@ while ($row = fgetcsv($axesFile)) {
     }
 
     $axesActuals[$ref] = true;
-    $ref_old = $row[$config['axes_csv']['columns']['axe_old']];
-    $axesObsoletes[$ref_old] = $axesObsoletes[$ref_old] ?? 0 + 1;
 
     /*
     Process row if:
@@ -620,13 +617,54 @@ function getRrGeojson($ref): FeatureCollection
     return $featureCollection;
 }
 
+/**
+ * @return void 
+ */
 function process_old_axes()
 {
-    global $axesActuals, $axesObsoletes, $common, $config, $historyFile, $stats;
+    global $axesActuals, $common, $config, $historyFile, $stats;
+
+    echo Ansi::BACKGROUND_BLACK, Ansi::YELLOW, 'Obsolete axes:', Ansi::CLOSE, Ansi::EOL;
+
+    $axesObsoletes = [];
+
+    // column "axe_old" is not enough to find obsolete refs, so download all roads ref.
+    $specialRef = 'all_highways_refs';
+    $osm_file = $common->osm_filename($specialRef);
+    if ($historyFile->needUpdate($specialRef, $stats['start_at']) || (! file_exists($osm_file))) {
+        $result = $common->download_osm('all_highways_refs', '
+            [out:xml] [timeout:30];
+            area[admin_level=2]["wikidata"="Q1028"]->.country;
+            (
+                way["highway"]["ref"~"(^|;)(R)?(N|P|R)[0-9]+($|;)"](area.country);
+            );
+            out tags;
+            ');
+        $historyFile->update($specialRef, false);
+    }
+    $xml = new SimpleXMLElement(file_get_contents($osm_file));
+    if ($xml->getName() != 'osm') {
+        die('not an OSM file' . "\n");
+    }
+    foreach ($xml->way as $way) {
+        $wayRefs = Common::osm_object_get_tag($way, 'ref');
+        foreach (explode(';', $wayRefs) as $wayRef) {
+            // remove 'R' prefix
+            if (! preg_match('/^(?:R)?([NPR]\d+)$/', $wayRef, $m))
+            {
+                //die('process_old_axes() -> Ref dont match: "' . $wayRef . '"');
+                echo Ansi::TAB,Ansi::BACKGROUND_BLUE,Ansi::WHITE,'skip ref ',$wayRef,Ansi::CLOSE,Ansi::EOL;
+                continue ;
+            }
+            $axesObsoletes[$m[1]] = true;
+        }
+    }
+    if (empty($axesObsoletes)) {
+        die('No obsolete axe found.');
+    }
 
     // Not usable
     //$axes_diff = array_diff( array_keys($axesActuals), array_keys($axesObsoletes) );
-    echo Ansi::BACKGROUND_BLACK, Ansi::YELLOW, 'Obsolete axes:', Ansi::CLOSE, Ansi::EOL;
     foreach ($axesObsoletes as $old_ref => $v) {
         if (in_array($old_ref, ['NC', '']))
             continue;
@@ -642,10 +680,17 @@ function process_old_axes()
         if ($historyFile->needUpdate($old_ref, $stats['start_at']) || (! file_exists($common->osm_filename($old_ref)))) {
 
             echo Ansi::TAB, Ansi::BOLD, 'Checking ', $old_ref, Ansi::CLOSE, Ansi::EOL;
-            $result = $common->download_osm($old_ref);
+            $result = $common->download_osm($old_ref,'
+                [out:xml] [timeout:30];
+                area[admin_level=2]["wikidata"="Q1028"]->.country;
+                (
+                    way["highway"]["ref"~"(^|;)(R)?'.$old_ref.'($|;)"](area.country);
+                );
+                out tags;
+                ');
             $stats['old_axes'][$old_ref]['download'] = $result;
 
-            $osm_file = $config['cacheFolder'] . '/' . $old_ref . '_osm.osm';
+            $osm_file = $common->osm_filename($old_ref);
             $xml = new SimpleXMLElement(file_get_contents($osm_file));
             if ($xml->getName() != 'osm') {
                 die('not an OSM file' . "\n");

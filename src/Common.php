@@ -53,7 +53,7 @@ class Common
         return $query;
     }
 
-    function &download_osm($ref)
+    function &download_osm($ref, ?string $query=null)
     {
         $output_file = $this->osm_filename($ref);
 
@@ -77,7 +77,8 @@ class Common
         $this->stats['download_count']++;
 
         // must use "out meta" to permits opening in Josm.
-        $query = self::get_overpass_query($ref);
+        if( ! $query )
+            $query = self::get_overpass_query($ref);
 
         $context = stream_context_create([
             'http' => [
