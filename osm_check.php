@@ -137,7 +137,7 @@ while ($row = fgetcsv($axesFile)) {
             continue;
     } else {
         $stateDone = $row[$config['axes_csv']['columns']['done']];
-        if ( in_array($stateDone, ['','-1']) ) {
+        if (in_array($stateDone, ['', '-1'])) {
             continue;
         }
     }
@@ -348,7 +348,7 @@ function process_ref(&$row)
 
         if (count($xml->relation) > 1) {
             $stats['axes'][$ref]['relation'] = count($xml->relation);
-            add_error($ref, 'too_many_relations', '');
+            add_error($ref, 'relation_error', 'too many relations: ' . count($xml->relation));
             return;
         }
 
@@ -361,6 +361,10 @@ function process_ref(&$row)
         if (! $relRef || ! preg_match('#(?:^|;)R' . $ref . '(?:$|;)#', $relRef)) {
             add_error($ref, 'mismatch_ref', 'rel: ' . (string) $rel['id'] . ' ref: ' . $relRef);
         }
+        // Assert has tag "highway"
+        if (! Common::osm_object_has_tag($rel, 'highway')) {
+            add_error($ref, 'relation_error', 'missing "highway" tag rel: ' . (string) $rel['id']);
+        }
 
         // Store way members found in relation
         foreach ($rel->member as $member) {
@@ -372,7 +376,7 @@ function process_ref(&$row)
         }
     } else {
         $stats['axes'][$ref]['relation'] = false;
-        add_error($ref, 'missing_relation', 'not found');
+        add_error($ref, 'relation_error', 'relation not found');
     }
 
     $nodesId = [];
@@ -390,6 +394,12 @@ function process_ref(&$row)
         if (! Common::osm_object_has_tag($way, 'highway', 'track') && ! Common::osm_object_has_tag($way, 'surface')) {
             add_error($ref, 'missing_surface', 'way: ' . $wayId);
         }
+        // Assert well formed "proposed"
+        // @see https://osm.org/changeset/166553384
+        if (Common::osm_object_has_tag($way, 'proposed') && ! Common::osm_object_has_tag($way, 'highway', 'proposed')) {
+            add_error($ref, 'way_tags_error', 'malformed "proposed" on way: ' . $wayId);
+        }
+
         // Assert way is in relation
         if (! in_array($wayId, $ways_id_in_relation)) {
             /** @disregard P1006 */
@@ -676,14 +686,14 @@ function process_old_axes()
     }
     if (empty($axesObsoletes)) {
         echo Ansi::BACKGROUND_BLACK, Ansi::GREEN, 'No obsolete axe found.', Ansi::CLOSE, Ansi::EOL;
-        return ;
+        return;
     }
 
     foreach ($axesObsoletes as $old_ref => $v) {
         if (isset($axesActuals[$old_ref]))
             continue;
 
-        echo Ansi::TAB, Ansi::BACKGROUND_RED, Ansi::WHITE,$old_ref, ' still exists', Ansi::CLOSE, Ansi::EOL;
+        echo Ansi::TAB, Ansi::BACKGROUND_RED, Ansi::WHITE, $old_ref, ' still exists', Ansi::CLOSE, Ansi::EOL;
         $stats['errors_still_exists_count']++;
         $stats['old_axes'][$old_ref] = [
             'start_at' => time(),

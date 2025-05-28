@@ -61,12 +61,12 @@ $config = [
         'keys' => [
             // Les erreurs utilisées par osm_check
             'mismatch_ref',
-            'missing_relation',
-            'too_many_relations',
+            'relation_error', //'missing_relation','too_many_relations',
             'missing_continuity',
             'missing_surface',
             'ways_not_in_relation',
-            'match_rr_cner'
+            'match_rr_cner',
+            'way_tags_error'
         ],
         'ignore_types' => [
             'missing_surface' => true,

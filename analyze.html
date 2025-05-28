@@ -301,7 +301,7 @@
 
         $('<tr>'
           + '<td>'
-          + ( d['deleted']
+          + (d['deleted']
             ? '<span class="">' + k + '</span>'
             : '<span class="fw-bold">' + k + '</span>'
           )
@@ -441,7 +441,7 @@
 
           if (axe['errors_ignored_count'][k]) {
             datum.c = parseInt(axe['errors_ignored_count'][k]);
-            if( datum.c == 1 )
+            if (datum.c == 1)
               datum.d = '<span class="text-warning-emphasis">ignored</span>';
             else
               datum.d = '<span class="text-warning-emphasis">ignored: ' + datum.c + '</span>';
@@ -458,6 +458,7 @@
             switch (k) {
 
               case 'match_rr_cner':
+
                 datum.d += ' <br/>josm:'
                   + ' <a class="link" href="' + get_josm_import_link(get_rr_geojson_link(ref, true), true) + '" onclick="josmEdit(this,event)">rr simplified</a>'
                   + ' <a class="link" href="' + get_josm_import_link(get_rr_geojson_link(ref, false), true) + '" onclick="josmEdit(this,event)">rr normal</a>'
@@ -479,6 +480,7 @@
                 break;
 
               case 'ways_not_in_relation':
+
                 html = axe['errors'][k].reduce((ac, er) => {
                   //ac += er.replace('way: ', ' ');
                   const id = er.replace('way: ', '');
@@ -489,6 +491,7 @@
                 break;
 
               case 'mismatch_ref':
+
                 // mismatch_ref way: 361924287, ref: 
                 html = axe['errors'][k].reduce((ac, er) => {
                   //ac += er.replace('way: ', ' ');
@@ -498,6 +501,22 @@
                   return ac;
                 }, '');
                 datum.d += '<button class="collapsible">details</button><div class="collapsible-content">ways: ' + html + '</div>';
+                break;
+
+              case 'relation_error':
+
+                html = axe['errors'][k].reduce((ac, er) => {
+                  const matches = er.match(/rel\: ([0-9]+)/);
+                  if (matches.length == 2) {
+                    const id = matches[1];
+                    ac += er.replace(/rel\: [0-9]+/, '<a href="' + get_josm_load_object('rel', id) + '" onclick="josmEdit(this,event)" class="link">' + id + '</a>');
+                  }
+                  else {
+                    ac += '<li>' + er + '</li>';
+                  }
+                  return ac;
+                }, '');
+                datum.d += '<button class="collapsible">details</button><div class="collapsible-content"><ul>' + html + '</ul></div>';
                 break;
 
               default:
@@ -616,8 +635,19 @@
         + '?'
         + 'left=' + bbox[0] + '&right=' + bbox[2] + '&top=' + bbox[1] + '&bottom=' + bbox[3]
         ;
-      if (selectType && selectType) {
+      if (selectType && selectId) {
         link += '&select=' + selectType + selectId;
+      }
+      return link;
+    }
+
+    function get_josm_load_object(objType, objId) {
+
+      let link = 'http://127.0.0.1:8111/load_object?new_layer=true';
+      switch (objType) {
+        case 'node': link += '&objects=n' + objId; break;
+        case 'way': link += '&objects=w' + objId; break;
+        case 'rel': link += '&objects=r' + objId; break;
       }
       return link;
     }
