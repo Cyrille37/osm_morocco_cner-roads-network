@@ -1,3 +1,4 @@
+**ARCHIVED**
 
 Pour faire le suivi de la mise à jour du réseau routier Marocain à partir du ShapeFile fourni par le CNER début 2025.
 Les données sont sur la page https://map.comptoir.net/maroc-reseau-routier-2025-01/.
